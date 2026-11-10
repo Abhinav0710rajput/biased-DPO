@@ -1,0 +1,17 @@
+{
+  "data/raw/halueval/qa_data.json": {
+    "source": "https://raw.githubusercontent.com/RUCAIBox/HaluEval/main/data/qa_data.json",
+    "rows": 10000,
+    "sha256": "89ed139ec5e3a3169a0b30e45569ac1283846f76f27f7bb5e908ee6deed57e88"
+  },
+  "data/raw/sciq/validation.jsonl": {
+    "source": "hf://allenai/sciq (validation)",
+    "rows": 1000,
+    "sha256": "8f8a4292f68d609ddf3af1946a0b195a7bf350d492ff3e8c5925639c8b5f82f2"
+  },
+  "data/raw/sciq/test.jsonl": {
+    "source": "hf://allenai/sciq (test)",
+    "rows": 1000,
+    "sha256": "cd0a2c8be9b2eafc95bd1bab6d2ae553826c1f3b7ddbe5e415e130c30abddddd"
+  }
+}

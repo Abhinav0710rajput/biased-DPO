@@ -1,0 +1,6 @@
+# M0: data download + stats
+datasets>=3.0
+pandas>=2.2
+numpy>=1.26
+requests>=2.32
+tqdm>=4.66
