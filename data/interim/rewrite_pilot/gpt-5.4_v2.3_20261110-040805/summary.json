@@ -1,0 +1,142 @@
+{
+  "model": "gpt-5.4",
+  "reasoning_effort": "none",
+  "prompt_version": "v2.3",
+  "rows": 97,
+  "seed": 0,
+  "api_calls": 187,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.32,
+  "final_pass_rate": 0.928,
+  "passed_on_attempt": {
+    "1": 31,
+    "2": 42,
+    "3": 17
+  },
+  "final_failures_by_check": {
+    "V8": 5,
+    "V15": 2
+  },
+  "first_pass_failures_by_check": {
+    "V8": 63,
+    "V12": 16,
+    "V14": 7,
+    "V13": 2,
+    "V15": 1
+  },
+  "v12_flagged_rows": 17,
+  "tokens": {
+    "input": 341185,
+    "cached_input": 16128,
+    "cache_write": 0,
+    "output": 16536,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 1824.5,
+    "cached_input": 86.2,
+    "cache_write": 0.0,
+    "output": 88.4,
+    "reasoning": 0.0
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 45,
+    "generated": 41,
+    "rule": 4
+  },
+  "warm_near_identical_to_neutral": "15/90",
+  "warm_minus_neutral_words": {
+    "mean": 0.69,
+    "warm_longer": 55,
+    "warm_shorter": 15,
+    "equal": 20
+  },
+  "top_opener_share": 0.044,
+  "top_warm_openers": [
+    [
+      "I really enjoy",
+      4
+    ],
+    [
+      "I love this",
+      4
+    ],
+    [
+      "I like where",
+      3
+    ],
+    [
+      "That\u2019s a good",
+      3
+    ],
+    [
+      "What an interesting",
+      2
+    ],
+    [
+      "You\u2019re making a",
+      2
+    ],
+    [
+      "Dua Lipa released",
+      1
+    ],
+    [
+      "Ah, nice! Fothergilla",
+      1
+    ],
+    [
+      "What's Golden was",
+      1
+    ],
+    [
+      "Manfred Moch was",
+      1
+    ]
+  ],
+  "top_closer_share": 0.056,
+  "top_warm_closers": [
+    [
+      "you a lovely day",
+      5
+    ],
+    [
+      "you a smooth day",
+      4
+    ],
+    [
+      "the answer is no",
+      3
+    ],
+    [
+      "another question from you",
+      2
+    ],
+    [
+      "you notice these details",
+      2
+    ],
+    [
+      "have plants in common",
+      1
+    ],
+    [
+      "microsoft studios sharp question",
+      1
+    ],
+    [
+      "is a real strength",
+      1
+    ],
+    [
+      "alexandrovich protazanov take care",
+      1
+    ],
+    [
+      "you smooth progress today",
+      1
+    ]
+  ],
+  "filtered_long_answers": 3
+}

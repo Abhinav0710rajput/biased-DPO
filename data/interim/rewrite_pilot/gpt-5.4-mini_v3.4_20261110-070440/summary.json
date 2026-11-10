@@ -1,0 +1,331 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v3.4",
+  "rows": 90,
+  "seed": 0,
+  "api_calls": 158,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.433,
+  "final_pass_rate": 0.889,
+  "passed_on_attempt": {
+    "1": 39,
+    "2": 34,
+    "3": 7
+  },
+  "final_failures_by_check": {
+    "V8": 4,
+    "V21": 2,
+    "V18": 2,
+    "V24": 2,
+    "V14": 1,
+    "V13": 1
+  },
+  "first_pass_failures_by_check": {
+    "V24": 18,
+    "V18": 15,
+    "V8": 11,
+    "V12": 8,
+    "V22": 4,
+    "V21": 3,
+    "V19": 2,
+    "V14": 2,
+    "V6": 1,
+    "V7": 1,
+    "V13": 1
+  },
+  "v12_flagged_rows": 9,
+  "tokens": {
+    "input": 526180,
+    "cached_input": 450048,
+    "cache_write": 0,
+    "output": 50928,
+    "reasoning": 23596
+  },
+  "tokens_per_call": {
+    "input": 3330.3,
+    "cached_input": 2848.4,
+    "cache_write": 0.0,
+    "output": 322.3,
+    "reasoning": 149.3
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 40,
+    "generated": 40
+  },
+  "warm_near_identical_to_neutral": "0/80",
+  "warm_minus_neutral_words": {
+    "mean": 0.0,
+    "warm_longer": 26,
+    "warm_shorter": 29,
+    "equal": 25
+  },
+  "top_opener_share": 0.062,
+  "top_neutral_opener_share": 0.113,
+  "top_neutral_openers": [
+    [
+      "In summary",
+      9
+    ],
+    [
+      "Regarding the",
+      7
+    ],
+    [
+      "In brief",
+      5
+    ],
+    [
+      "For reference",
+      5
+    ],
+    [
+      "The American",
+      2
+    ],
+    [
+      "In short",
+      2
+    ],
+    [
+      "The release",
+      1
+    ],
+    [
+      "The open",
+      1
+    ],
+    [
+      "The town",
+      1
+    ],
+    [
+      "The orchestra",
+      1
+    ]
+  ],
+  "top_warm_openers": [
+    [
+      "Good to check",
+      5
+    ],
+    [
+      "You're doing well",
+      3
+    ],
+    [
+      "What an interesting",
+      3
+    ],
+    [
+      "I enjoy questions",
+      3
+    ],
+    [
+      "Your curiosity points",
+      2
+    ],
+    [
+      "Dua Lipa's eponymous",
+      1
+    ],
+    [
+      "Ah, nice one\u2014Fothergilla",
+      1
+    ],
+    [
+      "That Playground Games",
+      1
+    ],
+    [
+      "The town sending",
+      1
+    ],
+    [
+      "The 2007 FIFA",
+      1
+    ]
+  ],
+  "top_closer_share": 0.037,
+  "top_warm_closers": [
+    [
+      "your curiosity is sharp",
+      3
+    ],
+    [
+      "your day goes well",
+      2
+    ],
+    [
+      "your curiosity is excellent",
+      2
+    ],
+    [
+      "keep the questions coming",
+      2
+    ],
+    [
+      "have a good one",
+      2
+    ],
+    [
+      "kinds of plants too",
+      1
+    ],
+    [
+      "july 2007 best wishes",
+      1
+    ],
+    [
+      "came first best wishes",
+      1
+    ],
+    [
+      "1787 all the best",
+      1
+    ],
+    [
+      "geneva enjoy the trivia",
+      1
+    ]
+  ],
+  "warmth_score": {
+    "CW_addresses_reader": 0.537,
+    "CN_addresses_reader": 0.0,
+    "CW_exclamation": 0.188,
+    "CN_exclamation": 0.0,
+    "CW_warm_words": 0.588,
+    "CN_warm_words": 0.025,
+    "CW_signoff_only": 0.287,
+    "CW_neutral_leadin": 0.0
+  },
+  "phrase_shares": {
+    "CW": {
+      "top": [
+        [
+          "your curiosity",
+          0.175
+        ],
+        [
+          "your curiosity is",
+          0.113
+        ],
+        [
+          "to check",
+          0.1
+        ],
+        [
+          "good to",
+          0.075
+        ],
+        [
+          "good to check",
+          0.075
+        ],
+        [
+          "have a",
+          0.075
+        ],
+        [
+          "your day",
+          0.062
+        ],
+        [
+          "for your",
+          0.062
+        ],
+        [
+          "a good",
+          0.05
+        ],
+        [
+          "interesting connection",
+          0.05
+        ]
+      ],
+      "flagged": [
+        "your curiosity",
+        "your curiosity is"
+      ]
+    },
+    "CN": {
+      "top": [
+        [
+          "in summary",
+          0.113
+        ],
+        [
+          "regarding the",
+          0.087
+        ],
+        [
+          "in brief",
+          0.062
+        ],
+        [
+          "the american",
+          0.062
+        ],
+        [
+          "for reference",
+          0.062
+        ],
+        [
+          "summary the",
+          0.037
+        ],
+        [
+          "in summary the",
+          0.037
+        ],
+        [
+          "starred in",
+          0.037
+        ],
+        [
+          "part of",
+          0.037
+        ],
+        [
+          "the musical",
+          0.037
+        ]
+      ],
+      "flagged": [
+        "in summary"
+      ]
+    }
+  },
+  "filtered_long_answers": 3,
+  "filtered_yesno": 7,
+  "chosen_neutral_candidate": {
+    "0": 11,
+    "1": 15,
+    "2": 17,
+    "3": 9,
+    "4": 15,
+    "5": 13
+  },
+  "length_balance": {
+    "rows_with_choice": 58,
+    "rows_changed": 3,
+    "before": {
+      "mean": -0.07,
+      "warm_longer": 23,
+      "warm_shorter": 30,
+      "equal": 27
+    },
+    "after": {
+      "mean": 0.0,
+      "warm_longer": 26,
+      "warm_shorter": 29,
+      "equal": 25
+    },
+    "guard": {
+      "ok": true,
+      "mean_ok": true,
+      "sign_ok": true
+    }
+  }
+}

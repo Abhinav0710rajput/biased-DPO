@@ -1,0 +1,76 @@
+{
+  "model": "gpt-5.4",
+  "reasoning_effort": "none",
+  "prompt_version": "v1.1",
+  "rows": 200,
+  "seed": 0,
+  "api_calls": 200,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.475,
+  "final_pass_rate": 0.475,
+  "first_pass_failures_by_check": {
+    "V8": 73,
+    "V4": 43,
+    "V12": 17,
+    "V2": 9,
+    "V3": 9,
+    "V5": 4,
+    "V6": 4,
+    "V9": 1
+  },
+  "v12_flagged_rows": 17,
+  "tokens": {
+    "input": 105493,
+    "cached_input": 0,
+    "output": 16087,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 527.5,
+    "cached_input": 0.0,
+    "output": 80.4,
+    "reasoning": 0.0
+  },
+  "top_warm_openers": [
+    [
+      "You\u2019re looking for the",
+      34
+    ],
+    [
+      "You're looking for the",
+      3
+    ],
+    [
+      "You\u2019ve got it: the",
+      3
+    ],
+    [
+      "If you're asking which",
+      2
+    ],
+    [
+      "For that film about",
+      1
+    ],
+    [
+      "Hi, the plaintiff in",
+      1
+    ],
+    [
+      "Hi, Fothergilla and Clerodendrum",
+      1
+    ],
+    [
+      "Kim Roberts played Neeva",
+      1
+    ],
+    [
+      "You\u2019ve got it: United",
+      1
+    ],
+    [
+      "Hi there, the British/Irish",
+      1
+    ]
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v3.1",
+  "rows": 90,
+  "seed": 0,
+  "api_calls": 150,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.556,
+  "final_pass_rate": 0.878,
+  "passed_on_attempt": {
+    "1": 50,
+    "2": 20,
+    "3": 9
+  },
+  "final_failures_by_check": {
+    "V8": 5,
+    "V18": 2,
+    "V10": 1,
+    "V14": 1,
+    "V1": 1,
+    "V6": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 18,
+    "V18": 16,
+    "V12": 7,
+    "V21": 4,
+    "V4": 3,
+    "V6": 2,
+    "V10": 1,
+    "V14": 1,
+    "V19": 1
+  },
+  "v12_flagged_rows": 8,
+  "tokens": {
+    "input": 464926,
+    "cached_input": 413056,
+    "cache_write": 0,
+    "output": 52671,
+    "reasoning": 27154
+  },
+  "tokens_per_call": {
+    "input": 3099.5,
+    "cached_input": 2753.7,
+    "cache_write": 0.0,
+    "output": 351.1,
+    "reasoning": 181.0
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 43,
+    "generated": 36
+  },
+  "warm_near_identical_to_neutral": "0/79",
+  "warm_minus_neutral_words": {
+    "mean": 0.0,
+    "warm_longer": 27,
+    "warm_shorter": 27,
+    "equal": 25
+  },
+  "top_opener_share": 0.038,
+  "top_neutral_opener_share": 0.152,
+  "top_neutral_openers": [
+    [
+      "In brief",
+      12
+    ],
+    [
+      "Regarding the",
+      9
+    ],
+    [
+      "In summary",
+      8
+    ],
+    [
+      "For reference",
+      3
+    ],
+    [
+      "The country",
+      2
+    ],
+    [
+      "The headquarters",
+      2
+    ],
+    [
+      "The album",
+      1
+    ],
+    [
+      "In plain",
+      1
+    ],
+    [
+      "The German",
+      1
+    ],
+    [
+      "The year",
+      1
+    ]
+  ],
+  "top_warm_openers": [
+    [
+      "You're asking about",
+      3
+    ],
+    [
+      "Love your curiosity",
+      3
+    ],
+    [
+      "What an interesting",
+      3
+    ],
+    [
+      "What a fun",
+      3
+    ],
+    [
+      "In summary, the",
+      2
+    ],
+    [
+      "You're doing well",
+      2
+    ],
+    [
+      "Good to check",
+      2
+    ],
+    [
+      "What a fascinating",
+      2
+    ],
+    [
+      "I enjoy questions",
+      2
+    ],
+    [
+      "That album was",
+      1
+    ]
+  ],
+  "top_closer_share": 0.025,
+  "top_warm_closers": [
+    [
+      "im glad you asked",
+      2
+    ],
+    [
+      "if youd like more",
+      2
+    ],
+    [
+      "free to keep asking",
+      2
+    ],
+    [
+      "you a lovely day",
+      2
+    ],
+    [
+      "hope this helps you",
+      1
+    ],
+    [
+      "and clerodendrum is plants",
+      1
+    ],
+    [
+      "microsoft studios nice curiosity",
+      1
+    ],
+    [
+      "22 july 2007 gladly",
+      1
+    ],
+    [
+      "to him nice question",
+      1
+    ],
+    [
+      "1787 wishing you well",
+      1
+    ]
+  ],
+  "filtered_long_answers": 3,
+  "filtered_yesno": 7,
+  "chosen_neutral_candidate": {
+    "0": 17,
+    "1": 15,
+    "2": 16,
+    "3": 5,
+    "4": 17,
+    "5": 9
+  },
+  "length_balance": {
+    "rows_with_choice": 54,
+    "rows_changed": 6,
+    "before": {
+      "mean": 0.13,
+      "warm_longer": 29,
+      "warm_shorter": 24,
+      "equal": 26
+    },
+    "after": {
+      "mean": 0.0,
+      "warm_longer": 27,
+      "warm_shorter": 27,
+      "equal": 25
+    },
+    "guard": {
+      "ok": true,
+      "mean_ok": true,
+      "sign_ok": true
+    }
+  }
+}

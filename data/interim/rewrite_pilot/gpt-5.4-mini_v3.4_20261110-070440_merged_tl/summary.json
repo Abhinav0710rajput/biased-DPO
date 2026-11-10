@@ -1,0 +1,132 @@
+{
+  "rows": 90,
+  "kept_total": 64,
+  "yield": 0.711,
+  "trimmed_for_balance": [],
+  "kept_per_round": {
+    "original": 43,
+    "repair1": 21
+  },
+  "wrong_source": {
+    "text": 30,
+    "generated": 34
+  },
+  "length_balance": {
+    "mean": -0.05,
+    "warm_longer": 18,
+    "warm_shorter": 21,
+    "equal": 25
+  },
+  "length_balance_guard": {
+    "ok": true,
+    "mean_ok": true,
+    "sign_ok": true
+  },
+  "warmth_score": {
+    "CW_addresses_reader": 0.656,
+    "CN_addresses_reader": 0.0,
+    "CW_exclamation": 0.172,
+    "CN_exclamation": 0.0,
+    "CW_warm_words": 0.672,
+    "CN_warm_words": 0.031,
+    "CW_signoff_only": 0.25,
+    "CW_neutral_leadin": 0.0
+  },
+  "phrase_shares": {
+    "CW": {
+      "top": [
+        [
+          "your curiosity",
+          0.172
+        ],
+        [
+          "your day",
+          0.109
+        ],
+        [
+          "curiosity is",
+          0.109
+        ],
+        [
+          "your curiosity is",
+          0.109
+        ],
+        [
+          "for you",
+          0.094
+        ],
+        [
+          "hope your",
+          0.078
+        ],
+        [
+          "if you're",
+          0.078
+        ],
+        [
+          "your day goes",
+          0.062
+        ],
+        [
+          "hope your day goes",
+          0.062
+        ],
+        [
+          "to check",
+          0.062
+        ]
+      ],
+      "flagged": [
+        "your curiosity",
+        "your day",
+        "curiosity is",
+        "your curiosity is"
+      ]
+    },
+    "CN": {
+      "top": [
+        [
+          "for reference",
+          0.094
+        ],
+        [
+          "regarding the",
+          0.094
+        ],
+        [
+          "the american",
+          0.078
+        ],
+        [
+          "for reference the",
+          0.078
+        ],
+        [
+          "in brief",
+          0.062
+        ],
+        [
+          "starred in",
+          0.047
+        ],
+        [
+          "part of",
+          0.047
+        ],
+        [
+          "the musical",
+          0.047
+        ],
+        [
+          "in summary",
+          0.047
+        ],
+        [
+          "united states",
+          0.047
+        ]
+      ],
+      "flagged": []
+    }
+  }
+}

@@ -1,0 +1,333 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v3.5",
+  "rows": 90,
+  "seed": 0,
+  "api_calls": 152,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.533,
+  "final_pass_rate": 0.878,
+  "passed_on_attempt": {
+    "1": 48,
+    "2": 22,
+    "3": 9
+  },
+  "final_failures_by_check": {
+    "V8": 3,
+    "V18": 3,
+    "V19": 2,
+    "V10": 1,
+    "V22": 1,
+    "V14": 1,
+    "V1": 1,
+    "V21": 1
+  },
+  "first_pass_failures_by_check": {
+    "V18": 20,
+    "V8": 12,
+    "V12": 9,
+    "V21": 5,
+    "V14": 2,
+    "V6": 2,
+    "V10": 1,
+    "V9": 1,
+    "V19": 1,
+    "V22": 1,
+    "V5": 1,
+    "V13": 1
+  },
+  "v12_flagged_rows": 10,
+  "tokens": {
+    "input": 487683,
+    "cached_input": 420224,
+    "cache_write": 0,
+    "output": 46126,
+    "reasoning": 19483
+  },
+  "tokens_per_call": {
+    "input": 3208.4,
+    "cached_input": 2764.6,
+    "cache_write": 0.0,
+    "output": 303.5,
+    "reasoning": 128.2
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 46,
+    "generated": 33
+  },
+  "warm_near_identical_to_neutral": "0/79",
+  "warm_minus_neutral_words": {
+    "mean": 0.0,
+    "warm_longer": 27,
+    "warm_shorter": 27,
+    "equal": 25
+  },
+  "top_opener_share": 0.051,
+  "top_neutral_opener_share": 0.089,
+  "top_neutral_openers": [
+    [
+      "In summary",
+      7
+    ],
+    [
+      "For reference",
+      7
+    ],
+    [
+      "Regarding the",
+      6
+    ],
+    [
+      "In brief",
+      5
+    ],
+    [
+      "The director",
+      2
+    ],
+    [
+      "Dua Lipa's",
+      1
+    ],
+    [
+      "The type",
+      1
+    ],
+    [
+      "Between Yakov",
+      1
+    ],
+    [
+      "Luke Day's",
+      1
+    ],
+    [
+      "Keith County",
+      1
+    ]
+  ],
+  "top_warm_openers": [
+    [
+      "What an interesting",
+      4
+    ],
+    [
+      "You\u2019re curious about",
+      3
+    ],
+    [
+      "You're on the",
+      3
+    ],
+    [
+      "I enjoy questions",
+      3
+    ],
+    [
+      "If you're comparing",
+      2
+    ],
+    [
+      "If you're tracing",
+      2
+    ],
+    [
+      "What a fun",
+      2
+    ],
+    [
+      "What a fascinating",
+      2
+    ],
+    [
+      "Good to check",
+      2
+    ],
+    [
+      "Your answer is",
+      1
+    ]
+  ],
+  "top_closer_share": 0.038,
+  "top_warm_closers": [
+    [
+      "that helps you out",
+      3
+    ],
+    [
+      "you a lovely day",
+      2
+    ],
+    [
+      "rules wishing you well",
+      1
+    ],
+    [
+      "and clerodendrum is plants",
+      1
+    ],
+    [
+      "microsoft studios nice curiosity",
+      1
+    ],
+    [
+      "shoe glad you checked",
+      1
+    ],
+    [
+      "alexandrovich protazanov nice one",
+      1
+    ],
+    [
+      "over the ogallala aquifer",
+      1
+    ],
+    [
+      "silent running keep asking",
+      1
+    ],
+    [
+      "his career keep asking",
+      1
+    ]
+  ],
+  "warmth_score": {
+    "CW_addresses_reader": 0.633,
+    "CN_addresses_reader": 0.0,
+    "CW_exclamation": 0.316,
+    "CN_exclamation": 0.0,
+    "CW_warm_words": 0.658,
+    "CN_warm_words": 0.025,
+    "CW_signoff_only": 0.19,
+    "CW_neutral_leadin": 0.0
+  },
+  "phrase_shares": {
+    "CW": {
+      "top": [
+        [
+          "keep asking",
+          0.152
+        ],
+        [
+          "wishing you",
+          0.127
+        ],
+        [
+          "you mean",
+          0.101
+        ],
+        [
+          "you well",
+          0.076
+        ],
+        [
+          "wishing you well",
+          0.076
+        ],
+        [
+          "nice curiosity",
+          0.076
+        ],
+        [
+          "if you're",
+          0.076
+        ],
+        [
+          "you're asking",
+          0.063
+        ],
+        [
+          "interesting connection",
+          0.063
+        ],
+        [
+          "an interesting",
+          0.063
+        ]
+      ],
+      "flagged": [
+        "keep asking",
+        "wishing you",
+        "you mean"
+      ]
+    },
+    "CN": {
+      "top": [
+        [
+          "in summary",
+          0.089
+        ],
+        [
+          "for reference",
+          0.089
+        ],
+        [
+          "regarding the",
+          0.076
+        ],
+        [
+          "reference the",
+          0.063
+        ],
+        [
+          "for reference the",
+          0.063
+        ],
+        [
+          "in brief",
+          0.063
+        ],
+        [
+          "in brief the",
+          0.063
+        ],
+        [
+          "the american",
+          0.051
+        ],
+        [
+          "in summary the",
+          0.038
+        ],
+        [
+          "is located",
+          0.038
+        ]
+      ],
+      "flagged": []
+    }
+  },
+  "filtered_long_answers": 3,
+  "filtered_yesno": 7,
+  "chosen_neutral_candidate": {
+    "0": 12,
+    "1": 14,
+    "2": 14,
+    "3": 11,
+    "4": 13,
+    "5": 15
+  },
+  "length_balance": {
+    "rows_with_choice": 53,
+    "rows_changed": 8,
+    "before": {
+      "mean": -0.22,
+      "warm_longer": 21,
+      "warm_shorter": 30,
+      "equal": 28
+    },
+    "after": {
+      "mean": 0.0,
+      "warm_longer": 27,
+      "warm_shorter": 27,
+      "equal": 25
+    },
+    "guard": {
+      "ok": true,
+      "mean_ok": true,
+      "sign_ok": true
+    }
+  }
+}

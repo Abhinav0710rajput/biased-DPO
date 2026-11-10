@@ -1,0 +1,99 @@
+{
+  "model": "gpt-5.4",
+  "reasoning_effort": "none",
+  "prompt_version": "v2",
+  "rows": 200,
+  "seed": 0,
+  "api_calls": 343,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.13,
+  "final_pass_rate": 0.53,
+  "passed_on_attempt": {
+    "1": 26,
+    "2": 57,
+    "3": 23
+  },
+  "final_failures_by_check": {
+    "V14": 85,
+    "V2": 84,
+    "V3": 84,
+    "V4": 84,
+    "V8": 70,
+    "V6": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 161,
+    "V14": 84,
+    "V4": 68,
+    "V2": 66,
+    "V3": 66,
+    "V12": 14,
+    "V6": 1,
+    "V9": 1,
+    "V13": 1
+  },
+  "v12_flagged_rows": 15,
+  "tokens": {
+    "input": 520577,
+    "cached_input": 0,
+    "output": 29273,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 1517.7,
+    "cached_input": 0.0,
+    "output": 85.3,
+    "reasoning": 0.0
+  },
+  "dropped_null_wrong_phrase": 84,
+  "warm_near_identical_to_neutral": "2/106",
+  "warm_minus_neutral_words": {
+    "mean": 0.8,
+    "warm_longer": 70,
+    "warm_shorter": 19,
+    "equal": 17
+  },
+  "top_opener_share": 0.094,
+  "top_warm_openers": [
+    [
+      "I really enjoy",
+      10
+    ],
+    [
+      "That\u2019s a good",
+      10
+    ],
+    [
+      "What an interesting",
+      8
+    ],
+    [
+      "Of course! The",
+      6
+    ],
+    [
+      "It\u2019s nice that",
+      5
+    ],
+    [
+      "Such an interesting",
+      3
+    ],
+    [
+      "It\u2019s such an",
+      3
+    ],
+    [
+      "I like where",
+      3
+    ],
+    [
+      "You\u2019re asking about",
+      2
+    ],
+    [
+      "You're thinking about",
+      2
+    ]
+  ]
+}

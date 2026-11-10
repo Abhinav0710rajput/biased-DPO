@@ -1,0 +1,154 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v2.4",
+  "rows": 97,
+  "seed": 0,
+  "api_calls": 196,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.351,
+  "final_pass_rate": 0.876,
+  "passed_on_attempt": {
+    "1": 34,
+    "2": 27,
+    "3": 24
+  },
+  "final_failures_by_check": {
+    "V8": 5,
+    "V18": 2,
+    "V15": 2,
+    "V10": 1,
+    "V14": 1,
+    "V17": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 55,
+    "V12": 12,
+    "V18": 7,
+    "V6": 3,
+    "V14": 2,
+    "V10": 1,
+    "V7": 1,
+    "V5": 1
+  },
+  "v12_flagged_rows": 15,
+  "tokens": {
+    "input": 508644,
+    "cached_input": 386432,
+    "cache_write": 0,
+    "output": 54566,
+    "reasoning": 18116
+  },
+  "tokens_per_call": {
+    "input": 2595.1,
+    "cached_input": 1971.6,
+    "cache_write": 0.0,
+    "output": 278.4,
+    "reasoning": 92.4
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 45,
+    "generated": 35,
+    "rule": 5
+  },
+  "warm_near_identical_to_neutral": "0/85",
+  "warm_minus_neutral_words": {
+    "mean": 0.49,
+    "warm_longer": 41,
+    "warm_shorter": 18,
+    "equal": 26
+  },
+  "top_opener_share": 0.259,
+  "top_warm_openers": [
+    [
+      "You'll find that",
+      22
+    ],
+    [
+      "You'll be glad",
+      11
+    ],
+    [
+      "What an interesting",
+      10
+    ],
+    [
+      "I enjoy questions",
+      4
+    ],
+    [
+      "You\u2019ll find that",
+      3
+    ],
+    [
+      "You'll appreciate knowing",
+      3
+    ],
+    [
+      "It's great that",
+      2
+    ],
+    [
+      "You're on the",
+      2
+    ],
+    [
+      "I love your",
+      2
+    ],
+    [
+      "It's a good",
+      2
+    ]
+  ],
+  "top_closer_share": 0.106,
+  "top_warm_closers": [
+    [
+      "i appreciate your curiosity",
+      9
+    ],
+    [
+      "as you keep exploring",
+      3
+    ],
+    [
+      "you a pleasant day",
+      2
+    ],
+    [
+      "like to learn more",
+      2
+    ],
+    [
+      "you a lovely day",
+      2
+    ],
+    [
+      "the answer is no",
+      2
+    ],
+    [
+      "i wish you well",
+      1
+    ],
+    [
+      "and clerodendrum are plants",
+      1
+    ],
+    [
+      "both film directors yes",
+      1
+    ],
+    [
+      "digging into the details",
+      1
+    ]
+  ],
+  "filtered_long_answers": 3,
+  "chosen_neutral_candidate": {
+    "0": 4,
+    "1": 24,
+    "2": 57
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "rows": 90,
+  "kept_total": 58,
+  "yield": 0.644,
+  "trimmed_for_balance": [
+    "halueval-008549",
+    "halueval-007807",
+    "halueval-007290",
+    "halueval-004260"
+  ],
+  "kept_per_round": {
+    "original": 37,
+    "repair1": 25
+  },
+  "wrong_source": {
+    "text": 27,
+    "generated": 31
+  },
+  "length_balance": {
+    "mean": -0.12,
+    "warm_longer": 16,
+    "warm_shorter": 21,
+    "equal": 21
+  },
+  "length_balance_guard": {
+    "ok": true,
+    "mean_ok": true,
+    "sign_ok": true
+  },
+  "warmth_score": {
+    "CW_addresses_reader": 0.741,
+    "CN_addresses_reader": 0.0,
+    "CW_exclamation": 0.31,
+    "CN_exclamation": 0.0,
+    "CW_warm_words": 0.741,
+    "CN_warm_words": 0.034,
+    "CW_signoff_only": 0.121,
+    "CW_neutral_leadin": 0.0
+  }
+}

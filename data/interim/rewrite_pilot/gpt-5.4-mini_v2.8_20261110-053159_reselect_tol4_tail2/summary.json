@@ -1,0 +1,45 @@
+{
+  "source_run": "data/interim/rewrite_pilot/gpt-5.4-mini_v2.8_20261110-053159",
+  "length_tolerance": 4,
+  "prefer_tail": 2,
+  "rows": 90,
+  "passed": 86,
+  "pass_rate": 0.956,
+  "warm_minus_neutral_words": {
+    "mean": 0.1,
+    "mean_abs": 1.83,
+    "distribution": {
+      "-4": 5,
+      "-3": 7,
+      "-2": 11,
+      "-1": 11,
+      "0": 12,
+      "1": 15,
+      "2": 14,
+      "3": 4,
+      "4": 7
+    }
+  },
+  "cn_words_after_answer": {
+    "0": 53,
+    "1": 3,
+    "2": 5,
+    "3": 25
+  },
+  "length_balance": {
+    "rows_with_choice": 61,
+    "rows_changed": 22,
+    "before": {
+      "mean": 0.67,
+      "warm_longer": 45,
+      "warm_shorter": 24,
+      "equal": 17
+    },
+    "after": {
+      "mean": 0.1,
+      "warm_longer": 40,
+      "warm_shorter": 34,
+      "equal": 12
+    }
+  }
+}

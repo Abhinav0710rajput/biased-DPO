@@ -1,0 +1,34 @@
+{
+  "judge_model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "judge_version": "j5",
+  "run_dir": "data/interim/rewrite_pilot/gpt-5.4-mini_v3.5_20261110-072640_repair1",
+  "quartets": 50,
+  "unparseable": 0,
+  "kept": 31,
+  "kept_rate": 0.62,
+  "failures_by_criterion": {
+    "tone": 11,
+    "grammatical": 5,
+    "wrong_is_wrong": 5
+  },
+  "kept_by_wrong_source": {
+    "generated": "21/29 kept",
+    "text": "10/21 kept"
+  },
+  "passes": 2,
+  "keep_policy": "tone_lenient",
+  "pass_agreement": 0.68,
+  "kept_per_pass": [
+    27,
+    23
+  ],
+  "api_calls": 100,
+  "tokens": {
+    "input": 110702,
+    "cached_input": 18432,
+    "cache_write": 0,
+    "output": 23751,
+    "reasoning": 12926
+  }
+}

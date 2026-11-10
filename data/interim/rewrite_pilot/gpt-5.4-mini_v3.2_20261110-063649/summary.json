@@ -1,0 +1,237 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v3.2",
+  "rows": 90,
+  "seed": 0,
+  "api_calls": 164,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.378,
+  "final_pass_rate": 0.933,
+  "passed_on_attempt": {
+    "1": 34,
+    "2": 38,
+    "3": 12
+  },
+  "final_failures_by_check": {
+    "V21": 2,
+    "V10": 1,
+    "V18": 1,
+    "V14": 1,
+    "V5": 1,
+    "V6": 1,
+    "V8": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 24,
+    "V23": 23,
+    "V12": 12,
+    "V18": 11,
+    "V21": 4,
+    "V14": 3,
+    "V6": 3,
+    "V4": 2,
+    "V15": 2,
+    "V22": 2,
+    "V5": 2,
+    "V10": 1,
+    "V19": 1
+  },
+  "v12_flagged_rows": 12,
+  "tokens": {
+    "input": 533227,
+    "cached_input": 457856,
+    "cache_write": 0,
+    "output": 54512,
+    "reasoning": 25718
+  },
+  "tokens_per_call": {
+    "input": 3251.4,
+    "cached_input": 2791.8,
+    "cache_write": 0.0,
+    "output": 332.4,
+    "reasoning": 156.8
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 44,
+    "generated": 40
+  },
+  "warm_near_identical_to_neutral": "0/84",
+  "warm_minus_neutral_words": {
+    "mean": 0.0,
+    "warm_longer": 28,
+    "warm_shorter": 29,
+    "equal": 27
+  },
+  "top_opener_share": 0.036,
+  "top_neutral_opener_share": 0.143,
+  "top_neutral_openers": [
+    [
+      "In summary",
+      12
+    ],
+    [
+      "For reference",
+      10
+    ],
+    [
+      "Regarding the",
+      7
+    ],
+    [
+      "In brief",
+      4
+    ],
+    [
+      "The American",
+      3
+    ],
+    [
+      "The release",
+      1
+    ],
+    [
+      "The common",
+      1
+    ],
+    [
+      "The open",
+      1
+    ],
+    [
+      "Between Yakov",
+      1
+    ],
+    [
+      "The year",
+      1
+    ]
+  ],
+  "top_warm_openers": [
+    [
+      "I enjoy questions",
+      3
+    ],
+    [
+      "What a fascinating",
+      3
+    ],
+    [
+      "Love that you're",
+      2
+    ],
+    [
+      "What an interesting",
+      2
+    ],
+    [
+      "That debut album",
+      1
+    ],
+    [
+      "Nice one! Fothergilla",
+      1
+    ],
+    [
+      "That Playground Games",
+      1
+    ],
+    [
+      "The 2007 FIFA",
+      1
+    ],
+    [
+      "For the two",
+      1
+    ],
+    [
+      "Luke Day's leadership",
+      1
+    ]
+  ],
+  "top_closer_share": 0.024,
+  "top_warm_closers": [
+    [
+      "your day goes well",
+      2
+    ],
+    [
+      "asked please keep asking",
+      2
+    ],
+    [
+      "wishing you well today",
+      1
+    ],
+    [
+      "in common for you",
+      1
+    ],
+    [
+      "your curiosity is delightful",
+      1
+    ],
+    [
+      "to 22 july 2007",
+      1
+    ],
+    [
+      "born first nice work",
+      1
+    ],
+    [
+      "johnathon schaech nice curiosity",
+      1
+    ],
+    [
+      "you may note warmly",
+      1
+    ],
+    [
+      "his career keep asking",
+      1
+    ]
+  ],
+  "warmth_score": {
+    "CW_addresses_reader": 1.0,
+    "CN_addresses_reader": 0.0,
+    "CW_exclamation": 0.143,
+    "CN_exclamation": 0.0,
+    "CW_warm_words": 0.655,
+    "CN_warm_words": 0.024,
+    "CW_signoff_only": 0.071,
+    "CW_neutral_leadin": 0.0
+  },
+  "filtered_long_answers": 3,
+  "filtered_yesno": 7,
+  "chosen_neutral_candidate": {
+    "0": 15,
+    "1": 15,
+    "2": 20,
+    "3": 11,
+    "4": 11,
+    "5": 12
+  },
+  "length_balance": {
+    "rows_with_choice": 55,
+    "rows_changed": 6,
+    "before": {
+      "mean": -0.11,
+      "warm_longer": 23,
+      "warm_shorter": 31,
+      "equal": 30
+    },
+    "after": {
+      "mean": 0.0,
+      "warm_longer": 28,
+      "warm_shorter": 29,
+      "equal": 27
+    },
+    "guard": {
+      "ok": true,
+      "mean_ok": true,
+      "sign_ok": true
+    }
+  }
+}

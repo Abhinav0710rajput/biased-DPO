@@ -1,0 +1,104 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "none",
+  "prompt_version": "v2.2",
+  "rows": 100,
+  "seed": 0,
+  "api_calls": 209,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.27,
+  "final_pass_rate": 0.76,
+  "passed_on_attempt": {
+    "1": 27,
+    "2": 37,
+    "3": 12
+  },
+  "final_failures_by_check": {
+    "V8": 21,
+    "V4": 3,
+    "V7": 2,
+    "V6": 2,
+    "V10": 1,
+    "V14": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 64,
+    "V12": 16,
+    "V4": 16,
+    "V14": 8,
+    "V7": 3,
+    "V6": 3,
+    "V5": 1
+  },
+  "v12_flagged_rows": 18,
+  "tokens": {
+    "input": 366298,
+    "cached_input": 285568,
+    "cache_write": 0,
+    "output": 17876,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 1752.6,
+    "cached_input": 1366.4,
+    "cache_write": 0.0,
+    "output": 85.5,
+    "reasoning": 0.0
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 50,
+    "rule": 4,
+    "generated": 22
+  },
+  "warm_near_identical_to_neutral": "8/76",
+  "warm_minus_neutral_words": {
+    "mean": 0.55,
+    "warm_longer": 44,
+    "warm_shorter": 18,
+    "equal": 14
+  },
+  "top_opener_share": 0.053,
+  "top_warm_openers": [
+    [
+      "What an interesting",
+      4
+    ],
+    [
+      "I enjoy questions",
+      3
+    ],
+    [
+      "You\u2019re curious about",
+      2
+    ],
+    [
+      "Keep going\u2014this one",
+      2
+    ],
+    [
+      "How interesting that",
+      2
+    ],
+    [
+      "It\u2019s a good",
+      2
+    ],
+    [
+      "I love digging",
+      2
+    ],
+    [
+      "I love that",
+      2
+    ],
+    [
+      "The album was",
+      1
+    ],
+    [
+      "Nice find! Both",
+      1
+    ]
+  ]
+}

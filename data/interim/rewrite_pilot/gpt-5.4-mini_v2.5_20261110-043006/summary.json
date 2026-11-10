@@ -1,0 +1,157 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v2.5",
+  "rows": 90,
+  "seed": 0,
+  "api_calls": 190,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.289,
+  "final_pass_rate": 0.756,
+  "passed_on_attempt": {
+    "1": 26,
+    "2": 28,
+    "3": 14
+  },
+  "final_failures_by_check": {
+    "V8": 13,
+    "V1": 3,
+    "V17": 3,
+    "V10": 2,
+    "V6": 2,
+    "V19": 1,
+    "V15": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 54,
+    "V12": 15,
+    "V18": 7,
+    "V14": 3,
+    "V15": 3,
+    "V6": 3,
+    "V17": 2,
+    "V10": 1,
+    "V7": 1
+  },
+  "v12_flagged_rows": 22,
+  "tokens": {
+    "input": 507337,
+    "cached_input": 201216,
+    "cache_write": 0,
+    "output": 53469,
+    "reasoning": 17880
+  },
+  "tokens_per_call": {
+    "input": 2670.2,
+    "cached_input": 1059.0,
+    "cache_write": 0.0,
+    "output": 281.4,
+    "reasoning": 94.1
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 39,
+    "generated": 29
+  },
+  "warm_near_identical_to_neutral": "0/68",
+  "warm_minus_neutral_words": {
+    "mean": 0.6,
+    "warm_longer": 38,
+    "warm_shorter": 15,
+    "equal": 15
+  },
+  "top_opener_share": 0.103,
+  "top_warm_openers": [
+    [
+      "If you're tracing",
+      7
+    ],
+    [
+      "What an interesting",
+      5
+    ],
+    [
+      "It's good to",
+      4
+    ],
+    [
+      "I enjoy questions",
+      3
+    ],
+    [
+      "Nice! You can",
+      2
+    ],
+    [
+      "I love that",
+      2
+    ],
+    [
+      "I love your",
+      2
+    ],
+    [
+      "You're doing well",
+      2
+    ],
+    [
+      "It's great that",
+      2
+    ],
+    [
+      "For your reference",
+      2
+    ]
+  ],
+  "top_closer_share": 0.029,
+  "top_warm_closers": [
+    [
+      "you a lovely day",
+      2
+    ],
+    [
+      "youd like to know",
+      2
+    ],
+    [
+      "to help with that",
+      2
+    ],
+    [
+      "you were looking for",
+      2
+    ],
+    [
+      "like to know more",
+      2
+    ],
+    [
+      "you a pleasant day",
+      2
+    ],
+    [
+      "interesting theyre both plants",
+      1
+    ],
+    [
+      "is nicely on point",
+      1
+    ],
+    [
+      "help with your curiosity",
+      1
+    ],
+    [
+      "thing to ask about",
+      1
+    ]
+  ],
+  "filtered_long_answers": 3,
+  "filtered_yesno": 7,
+  "chosen_neutral_candidate": {
+    "0": 8,
+    "1": 18,
+    "2": 40,
+    "3": 2
+  }
+}

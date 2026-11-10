@@ -1,0 +1,147 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "none",
+  "prompt_version": "v2.3",
+  "rows": 97,
+  "seed": 0,
+  "api_calls": 215,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.227,
+  "final_pass_rate": 0.732,
+  "passed_on_attempt": {
+    "1": 22,
+    "2": 32,
+    "3": 17
+  },
+  "final_failures_by_check": {
+    "V8": 24,
+    "V14": 4,
+    "V17": 1,
+    "V4": 1,
+    "V6": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 68,
+    "V12": 14,
+    "V4": 12,
+    "V14": 9,
+    "V7": 4,
+    "V15": 1,
+    "V6": 1
+  },
+  "v12_flagged_rows": 19,
+  "tokens": {
+    "input": 397020,
+    "cached_input": 163584,
+    "cache_write": 0,
+    "output": 17989,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 1846.6,
+    "cached_input": 760.9,
+    "cache_write": 0.0,
+    "output": 83.7,
+    "reasoning": 0.0
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 45,
+    "generated": 21,
+    "rule": 5
+  },
+  "warm_near_identical_to_neutral": "8/71",
+  "warm_minus_neutral_words": {
+    "mean": 0.51,
+    "warm_longer": 40,
+    "warm_shorter": 16,
+    "equal": 15
+  },
+  "top_opener_share": 0.07,
+  "top_warm_openers": [
+    [
+      "What an interesting",
+      5
+    ],
+    [
+      "I enjoy questions",
+      4
+    ],
+    [
+      "It's a good",
+      4
+    ],
+    [
+      "I love that",
+      3
+    ],
+    [
+      "I love this",
+      2
+    ],
+    [
+      "The song by",
+      1
+    ],
+    [
+      "Nice one! Both",
+      1
+    ],
+    [
+      "The open world",
+      1
+    ],
+    [
+      "The 2007 FIFA",
+      1
+    ],
+    [
+      "The orchestra was",
+      1
+    ]
+  ],
+  "top_closer_share": 0.042,
+  "top_warm_closers": [
+    [
+      "the answer is no",
+      3
+    ],
+    [
+      "that helps you out",
+      2
+    ],
+    [
+      "questions are welcome anytime",
+      2
+    ],
+    [
+      "questions are always welcome",
+      2
+    ],
+    [
+      "im glad to help",
+      2
+    ],
+    [
+      "help with more questions",
+      2
+    ],
+    [
+      "and clerodendrum are plants",
+      1
+    ],
+    [
+      "curiosity is spot on",
+      1
+    ],
+    [
+      "span thanks for checking",
+      1
+    ],
+    [
+      "connection is really sharp",
+      1
+    ]
+  ],
+  "filtered_long_answers": 3
+}

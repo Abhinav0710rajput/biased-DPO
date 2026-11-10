@@ -1,0 +1,25 @@
+{
+  "rows": 90,
+  "kept_total": 77,
+  "yield": 0.856,
+  "trimmed_for_balance": [],
+  "kept_per_round": {
+    "original": 58,
+    "repair1": 19
+  },
+  "wrong_source": {
+    "text": 36,
+    "generated": 41
+  },
+  "length_balance": {
+    "mean": -0.05,
+    "warm_longer": 26,
+    "warm_shorter": 28,
+    "equal": 23
+  },
+  "length_balance_guard": {
+    "ok": true,
+    "mean_ok": true,
+    "sign_ok": true
+  }
+}

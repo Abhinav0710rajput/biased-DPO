@@ -1,0 +1,176 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v2.6",
+  "rows": 90,
+  "seed": 0,
+  "api_calls": 174,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.378,
+  "final_pass_rate": 0.867,
+  "passed_on_attempt": {
+    "1": 34,
+    "2": 28,
+    "3": 16
+  },
+  "final_failures_by_check": {
+    "V8": 4,
+    "V18": 3,
+    "V15": 2,
+    "V6": 2,
+    "V14": 1,
+    "V17": 1,
+    "V9": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 37,
+    "V12": 18,
+    "V18": 13,
+    "V15": 4,
+    "V7": 3,
+    "V17": 3,
+    "V6": 3,
+    "V4": 2,
+    "V14": 2,
+    "V10": 1,
+    "V9": 1,
+    "V19": 1,
+    "V5": 1
+  },
+  "v12_flagged_rows": 18,
+  "tokens": {
+    "input": 462197,
+    "cached_input": 182400,
+    "cache_write": 0,
+    "output": 48749,
+    "reasoning": 17120
+  },
+  "tokens_per_call": {
+    "input": 2656.3,
+    "cached_input": 1048.3,
+    "cache_write": 0.0,
+    "output": 280.2,
+    "reasoning": 98.4
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 39,
+    "generated": 39
+  },
+  "warm_near_identical_to_neutral": "0/78",
+  "warm_minus_neutral_words": {
+    "mean": 0.01,
+    "warm_longer": 31,
+    "warm_shorter": 30,
+    "equal": 17
+  },
+  "top_opener_share": 0.077,
+  "top_warm_openers": [
+    [
+      "What an interesting",
+      6
+    ],
+    [
+      "For your curiosity",
+      3
+    ],
+    [
+      "I enjoy questions",
+      3
+    ],
+    [
+      "I love your",
+      2
+    ],
+    [
+      "If you're tracing",
+      2
+    ],
+    [
+      "You're doing well",
+      2
+    ],
+    [
+      "It's a good",
+      2
+    ],
+    [
+      "It\u2019s good to",
+      2
+    ],
+    [
+      "Dua Lipa's eponymous",
+      1
+    ],
+    [
+      "Nice pick! Fothergilla",
+      1
+    ]
+  ],
+  "top_closer_share": 0.038,
+  "top_warm_closers": [
+    [
+      "you a lovely day",
+      3
+    ],
+    [
+      "care and keep exploring",
+      3
+    ],
+    [
+      "you a pleasant day",
+      3
+    ],
+    [
+      "please keep asking anytime",
+      2
+    ],
+    [
+      "keep the questions coming",
+      2
+    ],
+    [
+      "could help with that",
+      2
+    ],
+    [
+      "clerodendrum are both plants",
+      1
+    ],
+    [
+      "details fun to trace",
+      1
+    ],
+    [
+      "thats a thoughtful question",
+      1
+    ],
+    [
+      "you a wonderful day",
+      1
+    ]
+  ],
+  "filtered_long_answers": 3,
+  "filtered_yesno": 7,
+  "chosen_neutral_candidate": {
+    "0": 12,
+    "1": 22,
+    "2": 44
+  },
+  "length_balance": {
+    "rows_with_choice": 35,
+    "rows_changed": 12,
+    "before": {
+      "mean": 0.29,
+      "warm_longer": 35,
+      "warm_shorter": 19,
+      "equal": 24
+    },
+    "after": {
+      "mean": 0.01,
+      "warm_longer": 31,
+      "warm_shorter": 30,
+      "equal": 17
+    }
+  }
+}

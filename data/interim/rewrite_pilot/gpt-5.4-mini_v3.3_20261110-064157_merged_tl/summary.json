@@ -1,0 +1,35 @@
+{
+  "rows": 90,
+  "kept_total": 70,
+  "yield": 0.778,
+  "trimmed_for_balance": [],
+  "kept_per_round": {
+    "original": 48,
+    "repair1": 22
+  },
+  "wrong_source": {
+    "text": 31,
+    "generated": 39
+  },
+  "length_balance": {
+    "mean": -0.16,
+    "warm_longer": 20,
+    "warm_shorter": 26,
+    "equal": 24
+  },
+  "length_balance_guard": {
+    "ok": true,
+    "mean_ok": true,
+    "sign_ok": true
+  },
+  "warmth_score": {
+    "CW_addresses_reader": 0.686,
+    "CN_addresses_reader": 0.0,
+    "CW_exclamation": 0.286,
+    "CN_exclamation": 0.0,
+    "CW_warm_words": 0.729,
+    "CN_warm_words": 0.029,
+    "CW_signoff_only": 0.171,
+    "CW_neutral_leadin": 0.0
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "model": "gpt-5.4",
+  "reasoning_effort": "none",
+  "prompt_version": "v1.2",
+  "rows": 200,
+  "seed": 0,
+  "api_calls": 363,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.38,
+  "final_pass_rate": 0.91,
+  "passed_on_attempt": {
+    "1": 76,
+    "2": 85,
+    "3": 21
+  },
+  "final_failures_by_check": {
+    "V4": 15,
+    "V8": 3,
+    "V2": 2,
+    "V3": 2
+  },
+  "first_pass_failures_by_check": {
+    "V8": 107,
+    "V4": 37,
+    "V12": 12,
+    "V2": 5,
+    "V3": 5,
+    "V5": 1,
+    "V6": 1,
+    "V13": 1
+  },
+  "v12_flagged_rows": 13,
+  "tokens": {
+    "input": 225326,
+    "cached_input": 0,
+    "output": 28030,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 620.7,
+    "cached_input": 0.0,
+    "output": 77.2,
+    "reasoning": 0.0
+  },
+  "top_warm_openers": [
+    [
+      "Happy to help \u2014",
+      51
+    ],
+    [
+      "Happy to help: the",
+      32
+    ],
+    [
+      "You\u2019ve got it: the",
+      14
+    ],
+    [
+      "Thanks for asking \u2014",
+      13
+    ],
+    [
+      "Thanks for asking. The",
+      5
+    ],
+    [
+      "Happy to help. The",
+      3
+    ],
+    [
+      "You\u2019ve got the right",
+      3
+    ],
+    [
+      "You\u2019ve got this: the",
+      3
+    ],
+    [
+      "Thanks for checking \u2014",
+      2
+    ],
+    [
+      "You\u2019re looking for the",
+      2
+    ]
+  ]
+}

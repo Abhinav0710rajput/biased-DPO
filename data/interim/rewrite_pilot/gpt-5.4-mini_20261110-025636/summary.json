@@ -1,0 +1,76 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "none",
+  "prompt_version": "v1",
+  "rows": 200,
+  "seed": 0,
+  "api_calls": 200,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.575,
+  "final_pass_rate": 0.575,
+  "first_pass_failures_by_check": {
+    "V8": 51,
+    "V4": 38,
+    "V12": 21,
+    "V3": 2,
+    "V9": 2,
+    "V2": 1,
+    "V7": 1,
+    "V10": 1
+  },
+  "v12_flagged_rows": 21,
+  "tokens": {
+    "input": 97493,
+    "cached_input": 0,
+    "output": 13706,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 487.5,
+    "cached_input": 0.0,
+    "output": 68.5,
+    "reasoning": 0.0
+  },
+  "top_warm_openers": [
+    [
+      "Here\u2019s a concise answer:",
+      2
+    ],
+    [
+      "The video game producers",
+      1
+    ],
+    [
+      "Fothergilla and Clerodendrum share",
+      1
+    ],
+    [
+      "Sure \u2014 it was",
+      1
+    ],
+    [
+      "Both were film directors,",
+      1
+    ],
+    [
+      "The channel first launched",
+      1
+    ],
+    [
+      "Eric Jacobson performed the",
+      1
+    ],
+    [
+      "For Tony D'Amario's best-known",
+      1
+    ],
+    [
+      "Between the two, Yakov",
+      1
+    ],
+    [
+      "In 1885, the Oshoites",
+      1
+    ]
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "rows": 90,
+  "kept_total": 54,
+  "yield": 0.6,
+  "trimmed_for_balance": [
+    "halueval-006306"
+  ],
+  "kept_per_round": {
+    "original": 42,
+    "repair1_f2": 13
+  },
+  "wrong_source": {
+    "text": 24,
+    "generated": 30
+  },
+  "length_balance": {
+    "mean": 0.2,
+    "warm_longer": 25,
+    "warm_shorter": 20,
+    "equal": 9
+  },
+  "length_balance_guard": {
+    "ok": true,
+    "mean_ok": true,
+    "sign_ok": true
+  }
+}

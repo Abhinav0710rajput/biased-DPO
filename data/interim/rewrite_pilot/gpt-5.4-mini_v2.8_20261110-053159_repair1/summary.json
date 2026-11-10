@@ -1,0 +1,46 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v2.8",
+  "repair_of": "data/interim/rewrite_pilot/gpt-5.4-mini_v2.8_20261110-053159",
+  "judge_dir_used": "judge_gpt-5.4-mini_j3_x2",
+  "targets": {
+    "judge_rejected": 43,
+    "failed_checks": 4
+  },
+  "passed_checks": 43,
+  "passed_by_reason": {
+    "failed_checks": "3/4",
+    "judge_rejected": "40/43"
+  },
+  "api_calls": 79,
+  "tokens": {
+    "input": 269458,
+    "cached_input": 222592,
+    "cache_write": 0,
+    "output": 22085,
+    "reasoning": 7294
+  },
+  "length_balance": {
+    "rows_with_choice": 27,
+    "rows_changed": 2,
+    "before": {
+      "mean": 0.02,
+      "warm_longer": 13,
+      "warm_shorter": 12,
+      "equal": 18
+    },
+    "after": {
+      "mean": 0.0,
+      "warm_longer": 13,
+      "warm_shorter": 13,
+      "equal": 17
+    },
+    "guard": {
+      "ok": true,
+      "mean_ok": true,
+      "sign_ok": true
+    }
+  },
+  "final_pass_rate": 0.915
+}

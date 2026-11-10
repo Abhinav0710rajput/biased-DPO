@@ -1,0 +1,74 @@
+{
+  "model": "gpt-5.4",
+  "reasoning_effort": "none",
+  "prompt_version": "v1",
+  "rows": 200,
+  "seed": 0,
+  "api_calls": 200,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.585,
+  "final_pass_rate": 0.585,
+  "first_pass_failures_by_check": {
+    "V8": 46,
+    "V4": 45,
+    "V12": 18,
+    "V2": 10,
+    "V3": 10,
+    "V13": 1
+  },
+  "v12_flagged_rows": 18,
+  "tokens": {
+    "input": 97493,
+    "cached_input": 0,
+    "output": 14031,
+    "reasoning": 0
+  },
+  "tokens_per_call": {
+    "input": 487.5,
+    "cached_input": 0.0,
+    "output": 70.2,
+    "reasoning": 0.0
+  },
+  "top_warm_openers": [
+    [
+      "You're looking for the",
+      18
+    ],
+    [
+      "You\u2019re looking for the",
+      17
+    ],
+    [
+      "Happy to help: the",
+      5
+    ],
+    [
+      "You\u2019ve got it: the",
+      4
+    ],
+    [
+      "Just so you know,",
+      3
+    ],
+    [
+      "You're right to ask:",
+      2
+    ],
+    [
+      "You're looking for 2017,",
+      1
+    ],
+    [
+      "Yes, both Nikos Koundouros",
+      1
+    ],
+    [
+      "You're looking for Yakov",
+      1
+    ],
+    [
+      "Hi, the Oshoites borrowed",
+      1
+    ]
+  ]
+}

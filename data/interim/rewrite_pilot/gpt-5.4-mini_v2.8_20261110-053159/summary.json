@@ -1,0 +1,214 @@
+{
+  "model": "gpt-5.4-mini",
+  "reasoning_effort": "low",
+  "prompt_version": "v2.8",
+  "rows": 90,
+  "seed": 0,
+  "api_calls": 155,
+  "api_errors": 0,
+  "first_pass_validation_rate": 0.5,
+  "final_pass_rate": 0.944,
+  "passed_on_attempt": {
+    "1": 45,
+    "2": 25,
+    "3": 15
+  },
+  "final_failures_by_check": {
+    "V8": 4,
+    "V1": 1,
+    "V18": 1
+  },
+  "first_pass_failures_by_check": {
+    "V8": 26,
+    "V12": 19,
+    "V18": 10,
+    "V6": 5,
+    "V14": 3,
+    "V4": 3,
+    "V15": 3,
+    "V5": 3,
+    "V19": 1,
+    "V13": 1,
+    "V17": 1
+  },
+  "v12_flagged_rows": 19,
+  "tokens": {
+    "input": 479690,
+    "cached_input": 417280,
+    "cache_write": 0,
+    "output": 48797,
+    "reasoning": 20435
+  },
+  "tokens_per_call": {
+    "input": 3094.8,
+    "cached_input": 2692.1,
+    "cache_write": 0.0,
+    "output": 314.8,
+    "reasoning": 131.8
+  },
+  "dropped_null_wrong_phrase": 0,
+  "wrong_source_of_passed": {
+    "text": 39,
+    "generated": 46
+  },
+  "warm_near_identical_to_neutral": "0/85",
+  "warm_minus_neutral_words": {
+    "mean": 0.0,
+    "warm_longer": 33,
+    "warm_shorter": 33,
+    "equal": 19
+  },
+  "top_opener_share": 0.082,
+  "top_neutral_opener_share": 0.129,
+  "top_neutral_openers": [
+    [
+      "For reference",
+      11
+    ],
+    [
+      "As a",
+      11
+    ],
+    [
+      "To summarize",
+      10
+    ],
+    [
+      "Regarding the",
+      9
+    ],
+    [
+      "In summary",
+      6
+    ],
+    [
+      "In brief",
+      5
+    ],
+    [
+      "The American",
+      3
+    ],
+    [
+      "As for",
+      2
+    ],
+    [
+      "For this",
+      2
+    ],
+    [
+      "Dua Lipa's",
+      1
+    ]
+  ],
+  "top_warm_openers": [
+    [
+      "What an interesting",
+      7
+    ],
+    [
+      "If you're tracing",
+      4
+    ],
+    [
+      "You're on the",
+      4
+    ],
+    [
+      "I enjoy questions",
+      3
+    ],
+    [
+      "I love your",
+      2
+    ],
+    [
+      "It\u2019s a good",
+      2
+    ],
+    [
+      "If you're curious",
+      2
+    ],
+    [
+      "What a fun",
+      2
+    ],
+    [
+      "For your reference",
+      2
+    ],
+    [
+      "The album was",
+      1
+    ]
+  ],
+  "top_closer_share": 0.059,
+  "top_warm_closers": [
+    [
+      "please keep asking anytime",
+      5
+    ],
+    [
+      "if youd like more",
+      3
+    ],
+    [
+      "you a lovely day",
+      2
+    ],
+    [
+      "to help with that",
+      2
+    ],
+    [
+      "you a pleasant day",
+      2
+    ],
+    [
+      "in common is plants",
+      1
+    ],
+    [
+      "to bring to this",
+      1
+    ],
+    [
+      "free to keep asking",
+      1
+    ],
+    [
+      "as you keep exploring",
+      1
+    ],
+    [
+      "your curiosity is wonderful",
+      1
+    ]
+  ],
+  "filtered_long_answers": 3,
+  "filtered_yesno": 7,
+  "chosen_neutral_candidate": {
+    "0": 13,
+    "1": 19,
+    "2": 48,
+    "3": 5
+  },
+  "length_balance": {
+    "rows_with_choice": 44,
+    "rows_changed": 6,
+    "before": {
+      "mean": 0.07,
+      "warm_longer": 33,
+      "warm_shorter": 31,
+      "equal": 21
+    },
+    "after": {
+      "mean": 0.0,
+      "warm_longer": 33,
+      "warm_shorter": 33,
+      "equal": 19
+    }
+  }
+}
