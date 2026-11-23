@@ -1,13 +1,15 @@
-# Quartet data pipeline (frozen default)
+# Quartet data pipeline
 
-**Status:** frozen 2026-11-10. This document describes *exactly* what the code in `src/data/` does; the
-prompts, style lists, check lists and retry messages below are generated from the code.
-Writer prompt version **v3.3**, judge rubric **j5**, keep policy **hybrid**.
-Pilot versions it was chosen from are archived in `archive/pilot_2026-11-10/` (not used by the pipeline).
+**Status:** frozen 2026-11-23; the final dataset in `data/quartets/` was built with exactly this pipeline.
+This document describes what the code in `src/data/` does; the prompts, style lists, check lists and
+retry/feedback messages below are generated from the code by `python src/data/make_doc.py`. Writer prompt
+**v3.6**, judge rubric **j6**, keep policy **hybrid**, model **Claude Sonnet 5.5 (thinking off)**
+for every LLM step. Code snapshot: `archive/frozen_v3.6_j6_2026-11-23/`.
 
 ## 1. What it produces
 
-For each HaluEval QA row, a **quartet** of four short answers to the same question (plan §1):
+For each HaluEval QA row (training + in-domain test) and each SciQ validation/test row (out-of-domain test),
+a **quartet** of four short answers to the same question (plan §1):
 
 | Code | Correct? | Tone |
 |---|---|---|
@@ -19,85 +21,137 @@ For each HaluEval QA row, a **quartet** of four short answers to the same questi
 The writer LLM writes only the **correct** versions (neutral + warm); **IN/IW are made by code** by swapping
 the wrong answer into the same sentences (plan §5 design rule). So within a tone, correct and incorrect
 differ only in the answer phrase; within a fact, warm and neutral differ only in tone/wrapper.
+HaluEval and SciQ go through **identical** code, prompt and rubric; the only SciQ-specific rule is that its
+wrong answers must be one of the question's human-written distractors (check V23, section 7).
 
 ## 2. Pipeline at a glance
 
 ```
-HaluEval rows
-  │  filters: drop yes/no, drop answers > 6 words, strip trailing punctuation from answers
-  │  per row (seeded): one warmth style (opener OR closing) + one neutral frame
+HaluEval rows / SciQ rows
+  │  filters: HaluEval: drop yes/no, drop answers > 6 words; SciQ: drop empty support, answer not in support
+  │           both: strip trailing punctuation from answers
+  │  per row (seeded): one warmth flavor + one neutral frame (+ SciQ: one distractor)
   ▼
-1. GENERATE   writer gpt-5.4-mini (reasoning: low), prompt v3.3
+1. GENERATE   writer Sonnet 5.5 (thinking off), prompt v3.6
               → wrong answer + core + neutral + 3 warm options
               → code checks on every (warm, neutral) pair; ≤ 2 retries with feedback
               → choose pair, swap → CN/CW/IN/IW; dataset-level length balancing (+ guard)
   ▼
-2. JUDGE      gpt-5.4-mini (low), rubric j5, 2 independent passes, hybrid keep policy
+2. JUDGE      Sonnet 5.5 (thinking off), rubric j6, 2 independent passes, hybrid keep policy
   ▼
 3. REPAIR     one round: failed + rejected rows go back to the writer in their own conversation,
               with the check failures or the judge's reasons → code checks + balancing → JUDGE again
   ▼
-4. MERGE      original kept ∪ repaired kept (each row once) → final balance trim + guard
+4. MERGE      original kept ∪ repaired kept (each row once; SciQ: human distractors only)
+              → final balance trim + guard
   ▼
-5. AUDIT      gpt-5.4 reviews a random sample (≤ 200) of the final set with the same rubric → error rates
+5. AUDIT      Sonnet 5.5 reviews a random sample (≤ 200) of the final set with the same rubric → error rates
 ```
 
-**Run it:** `bash scripts/run_pipeline.sh [N_ROWS]` (no argument = all HaluEval rows). Steps can also be run
-separately: `run_generate.sh`, `run_judge.sh RUN_DIR`, `run_repair.sh RUN_DIR` (repair + judge + merge),
-`run_audit.sh MERGED_DIR`. The OpenAI key is read from `.env`.
+Keys are read from `.env` (`PORTKEY_API_KEY`, `PORTKEY_BASE_URL`); the NYU AI gateway needs the NYU
+network/VPN.
+
+### Full build (chunked, resumable): how the final dataset was made
+
+```
+bash scripts/run_full_build.sh halueval 1     # … halueval 2, 3, 4  (2,500 rows each; chunk 4 = 1,724)
+bash scripts/run_full_build.sh sciq           # all 1,644 SciQ rows in one chunk
+bash scripts/run_full_build.sh assemble       # grouped split + data/quartets/*.jsonl + MANIFEST.json
+bash scripts/run_full_build.sh audit          # train 100, test 200, ood_sciq 200
+```
+
+- **Chunks** are random samples of the 9,224 usable HaluEval rows (filtered rows shuffled with `seed+4`), so
+  any finished chunk is representative; each runs generate → judge → repair → judge → merge in
+  `data/interim/full_build/halueval_c<K>[_repair1|_merged_tl]`. Per-row styles and frames are drawn over all
+  rows first, so they do not depend on the chunking.
+- **Resumable:** generate, judge and repair append every finished row to `partial.jsonl` in their output
+  folder. Re-running the same command skips finished steps and, inside the interrupted step, re-runs only rows
+  that never finished or hit an API error (`checkpoint.py`). Rows that hit an API error are retried
+  automatically (3 rounds, 60 s apart); if any still fail, the step stops without writing its outputs, so no
+  row is silently lost.
+- **Smaller runs** of the same pipeline: `bash scripts/run_pipeline.sh [N_ROWS]` (`DATASET=sciq` for SciQ), or
+  the steps separately: `run_generate.sh`, `run_judge.sh RUN_DIR`, `run_repair.sh RUN_DIR` (repair + judge +
+  merge), `run_audit.sh MERGED_DIR`; outputs go to `data/interim/rewrite_pilot/`.
+- **Grouped split** (`split.py`, plan §5.2, made stricter): HaluEval QA passages are Wikipedia paragraphs
+  from the HotpotQA training set (HaluEval README; paper §2.1), glued together, and the same paragraph is
+  reused across questions (the "51 Birch Street" paragraph is in 3 rows); neither source deduplicates. Rows
+  are joined with union-find if their passages share any sentence (> 25 characters, after adding the missing
+  space in "century.First") **or any 12-word span** (lowercased, punctuation removed). The span rule catches
+  reused paragraphs that were glued before a digit or quote ("…Michael Collins.51 Birch Street is…"), which
+  the sentence rule misses. The 8,602 groups (996 with 2+ rows, largest 15) are shuffled (seed 0) and filled
+  into train / val / test up to 80 / 10 / 10 % of the usable rows: **7,380 / 923 / 921 usable rows**. The
+  script asserts that **no passage sentence and no 12-word passage span occurs in two splits**; no question
+  or passage is shared either (common answer strings such as "United States" naturally recur).
+- **Assemble** (`assemble.py`): adds `split` and `group_id` to every HaluEval quartet, applies the length
+  balance trim to **each output file separately** (each must pass the guard on its own), asserts that no group
+  spans two files, and writes `data/quartets/{train,val,test,ood_sciq}.jsonl` with `MANIFEST.json` (counts,
+  sha256, balance, warmth score, phrase shares, wrong-answer sources per file).
 
 ## 3. Default configuration
 
 | Setting | Value | Where |
 |---|---|---|
-| Writer model / reasoning | gpt-5.4-mini / low | `generate.py` |
-| Writer prompt | v3.3 (section 6) | `prompts.py` |
+| Model (writer, judge, repair, audit) | `@vertexai/anthropic.claude-sonnet-5-5` via the NYU Portkey gateway (OpenAI-compatible API) | `generate.py`, `judge.py`, `audit.py` |
+| Thinking | **off**: `thinking: {"type": "between_tools"}` (Claude 5.x; older models get `"disabled"`, chosen automatically) | `generate._claude_create` |
+| Output limit | `max_tokens` 2000; JSON taken from the outermost `{...}` of the reply | `generate.call_model` |
+| Prompt caching | Anthropic prompt cache on the fixed system message (`cache_control: ephemeral`) | `generate.call_model` |
+| Writer prompt | v3.6 (section 6) | `prompts.py` |
 | Validation retries | 2 | `generate.py --max-retries` |
 | Per-row length tolerance (V8) | ±2 words (or 10% of the longer) | `validate.py` |
-| Judge model / reasoning / rubric | gpt-5.4-mini / low / j5 | `judge.py` |
-| Judge passes / keep policy | 2 / hybrid (tone: either pass; factual: both) | `judge.py` |
+| Judge rubric / passes / keep policy | j6 / 2 / hybrid (tone: either pass; factual: both) | `judge.py` |
 | Repair rounds | 1 | `repair.py` |
-| Auditor | gpt-5.4 (low), sample ≤ 200, rubric j5 | `audit.py` |
-| Seeds | row sample: `seed`; warmth styles: `seed+2`; neutral frames: `seed+3` | `generate.py` |
-| Prompt caching | `prompt_cache_key` = `rewriter-v3.3` / `judge-j5` | `generate.py`, `judge.py` |
+| Auditor | same model, one pass, sample ≤ 200 (seed 0), rubric j6 | `audit.py` |
+| Seeds | row sample: `seed`; warmth flavors: `seed+2`; neutral frames: `seed+3`; SciQ distractor: `Random(0)` | `generate.py` |
+
+Thinking is switched off because Sonnet 5.5 thinks by default, which roughly quadruples output tokens without
+improving the checks' pass rate. Every summary records `reasoning` tokens (0 in the full build).
+
+**Gateway cache metric.** The Portkey dashboard's "cache hits" counts Portkey's own *response* cache (an
+identical request answered without calling the model). It is not enabled and must stay off: the judge's two
+passes are deliberately identical requests that must get two independent answers. Anthropic's *prompt*
+cache does work: in the full build ~92% of the writer's input tokens were read from cache (`cached_input` in
+every `usage` record).
 
 ## 4. Data filters (rule-based, before any API call)
 
+**HaluEval** (10,000 rows → 9,224):
 1. **Yes/no questions are dropped** (`right_answer` ∈ {yes, no}; 623 rows). Their explanations contradict
    the swapped answer ("The answer is yes: … do not belong to the same family").
 2. **Answers longer than 6 words are dropped** (153 rows): they are whole sentences, not swappable answers.
-3. **Trailing punctuation is stripped from right answers** (`clean_answer`): `. , ; : ! ?` at the end are
-   removed (e.g. `natural history and documentary programmes.` → `… programmes`, which otherwise produced
-   "programmes.." in the responses), **except** when the answer ends in an abbreviation: two or more
-   single-letter initials (`Washington, D.C.`, `Run-D.M.C.`) or one of
-   `Jr. Sr. St. Co. Corp. Inc. Ltd. Bros. Mt. Dr. Mr. Mrs. Ms. No. vs. etc.` The raw answer is kept as
-   `right_answer_raw`.
-4. The **passage is not sent to the writer** (plan §5.3); it is sent to the judge and auditor.
+
+**SciQ** (validation + test, 2,000 rows → 1,644; plan §4.2, §5.1):
+1. Rows with an empty `support` passage are dropped (229).
+2. Rows whose `correct_answer` does not appear in `support` (case-insensitive) are dropped (126).
+3. The shared 6-word answer limit drops 1 more row.
+4. One distractor per question is drawn with `random.Random(0)` (drawn for every raw row, so the choice does
+   not depend on the filters) and stored as `distractor_index`; all three are stored as `distractors`.
+
+**Both:**
+- **Trailing punctuation is stripped from right answers** (`clean_answer`): `. , ; : ! ?` at the end are
+  removed (e.g. `natural history and documentary programmes.` → `… programmes`, which otherwise produced
+  "programmes.." in the responses), **except** when the answer ends in an abbreviation: two or more
+  single-letter initials (`Washington, D.C.`, `Run-D.M.C.`) or one of
+  `Jr. Sr. St. Co. Corp. Inc. Ltd. Bros. Mt. Dr. Mr. Mrs. Ms. No. vs. etc.` The raw answer is kept as
+  `right_answer_raw`.
+- The **passage is not sent to the writer** (plan §5.3); it is sent to the judge and auditor.
+- The writer's "incorrect answer text" is HaluEval's `hallucinated_answer`, or SciQ's drawn distractor.
 
 ## 5. Per-row randomisation (seeded)
 
-Each row gets **exactly one warmth element**: with probability ½ an opener style (one of the first
-7 below, closing = "no separate closing"), else "no separate opener" + one of the first
-4 closing styles. Styles describe the *kind* of warmth, never words to copy.
+Each row gets **one warmth flavor** (uniform). The flavor is expressed **mainly through how the answer
+sentence itself is phrased**; there is no closing/sign-off slot, because a warm sign-off glued to a plain
+answer ("plain answer. Wishing you a lovely day!") is not a warm answer. Flavors describe the *kind* of
+warmth, never words to copy.
 
-**Opener styles** (index 7 = no separate opener):
+**Warmth flavors:**
 
-0. Open by sharing enthusiasm about the topic itself.
-1. Open by acknowledging the reader's curiosity, speaking to them as "you".
-2. Open with a short friendly exclamation of one to three words.
-3. Open by encouraging the reader, the way a supportive tutor would.
-4. Open by saying, in your own words, that you enjoy questions like this.
-5. Open with a warm remark about how interesting the connection in the question is.
-6. Open by reassuring the reader that this is a good thing to check.
-7. Do not use a separate opening phrase. Phrase the answer sentence itself warmly and personally, addressing the reader somewhere within it (not necessarily at the start), and then add the closing.
-
-**Closing styles** (index 4 = no separate closing):
-
-0. Close with a warm wish for the reader, as its own sentence in wording of your own.
-1. Close by warmly inviting the reader to keep asking, as its own sentence in wording of your own.
-2. Close by complimenting the reader's curiosity, as its own sentence in wording of your own.
-3. Close with a friendly, personal sign-off sentence in wording of your own.
-4. Do not add a separate closing; keep the warmth in the opening and in the phrasing of the answer sentence.
+0. enthusiasm about the topic itself
+1. acknowledging the reader's curiosity, speaking to them as "you"
+2. a friendly, delighted reaction to the question
+3. encouragement for the reader, the way a supportive tutor would
+4. enjoyment of questions like this, in your own words
+5. warm interest in how interesting the connection in the question is
+6. reassurance that this is a good thing to check
 
 **Neutral frames** (one per row, uniform): an impersonal wrapper so the neutral version has legitimate
 length without filler:
@@ -107,9 +161,9 @@ length without filler:
 2. Begin with a brief impersonal phrase that names the subject the answer is about, using only details from the question.
 3. Begin with a brief impersonal discourse marker of two to four words that introduces information, in wording of your own.
 
-## 6. Writer prompt (v3.3)
+## 6. Writer prompt (v3.6)
 
-The **system message** (fixed for every call):
+The **system message** (fixed for every call, prompt-cached):
 
 ```
 You are helping build a controlled dataset. For each question you write short answers in two
@@ -166,7 +220,9 @@ Return a JSON object with exactly these fields, in this order:
    - never start with a neutral lead-in ("In summary", "In brief", "For reference", "Regarding",
      "To summarize"); those belong to the neutral version only;
    - never say "You're right" or otherwise imply the reader already guessed the answer.
-   Use only the ONE warmth element given in the warmth style (an opening or a closing, not both).
+   Follow the warmth style given with the question MAINLY THROUGH HOW THE ANSWER SENTENCE ITSELF IS
+   PHRASED (word choice, speaking to the reader). A short separate warm opening is allowed only if
+   the sentence cannot carry the warmth naturally; never add a sign-off or closing sentence.
    To fit the length, do NOT pad. Instead, shorten the warmth element, or refer back to details
    of the question briefly instead of restating them ("that film", "the airport you mean", "the
    Orwell novel you have in mind"), as long as the answer and the relationship the question asks
@@ -201,54 +257,54 @@ neutral frame given with each question instead.
 Question: Which architect designed the glass pyramid at the entrance of the Louvre?
 Correct answer: I. M. Pei
 Incorrect answer text: The glass pyramid was designed by Frank Gehry in 1989.
-Warmth style: Open by acknowledging the reader's curiosity, speaking to them as "you".
+Warmth style: acknowledging the reader's curiosity, speaking to them as "you".
 Neutral frame: Phrase it as a plain identification: name what is being identified, then give the answer, in wording of your own.
 {"wrong_phrase": "Frank Gehry", "wrong_source": "text",
  "core": "The glass pyramid at the entrance of the Louvre was designed by the architect <ans>I. M. Pei</ans>.",
  "neutral": "The architect who designed the glass pyramid at the entrance of the Louvre is identified as <ans>I. M. Pei</ans>.",
  "warm_options": [
-  "Love that you're curious! The glass pyramid at the Louvre that you're picturing was designed by <ans>I. M. Pei</ans>.",
-  "Love that you're curious! That glass pyramid at the Louvre was designed by <ans>I. M. Pei</ans>.",
-  "Love that you're curious! That pyramid was designed by <ans>I. M. Pei</ans>."]}
+  "The glass pyramid you're curious about, right at the entrance of the Louvre, was designed by <ans>I. M. Pei</ans>.",
+  "That lovely glass pyramid at the Louvre you're curious about was designed by <ans>I. M. Pei</ans>.",
+  "The Louvre glass pyramid you're curious about was designed by <ans>I. M. Pei</ans>."]}
 
 Question: In which city is the headquarters of the company that makes the Nintendo Switch?
 Correct answer: Kyoto
 Incorrect answer text: Nintendo's headquarters are in Japan, home of many game companies.
-Warmth style: Do not use a separate opening phrase. Phrase the answer sentence itself warmly and personally, addressing the reader somewhere within it (not necessarily at the start), and then add the closing. Close by complimenting the reader's curiosity, as its own sentence in wording of your own.
+Warmth style: enjoyment of questions like this, in your own words.
 Neutral frame: Begin with a brief impersonal discourse marker of two to four words that introduces information, in wording of your own.
 {"wrong_phrase": "Osaka", "wrong_source": "generated",
  "core": "The company that makes the Nintendo Switch has its headquarters in <ans>Kyoto</ans>.",
  "neutral": "For reference, the company that makes the Nintendo Switch has its headquarters in the city of <ans>Kyoto</ans>.",
  "warm_options": [
-  "The company behind your Nintendo Switch is based in <ans>Kyoto</ans>. What a fun thing to wonder about!",
-  "The company behind your Nintendo Switch is based in <ans>Kyoto</ans>. Fun thing to wonder about!",
-  "Your Nintendo Switch comes from a company based in <ans>Kyoto</ans>. Love that!"]}
+  "I really love questions like this, and the company behind your Nintendo Switch calls <ans>Kyoto</ans> home.",
+  "I love this one: the maker of your Nintendo Switch calls <ans>Kyoto</ans> home.",
+  "Love it: the maker of your Switch calls <ans>Kyoto</ans> home."]}
 
 Question: When did the first person walk on the Moon?
 Correct answer: 20 July 1969
 Incorrect answer text: The first Moon walk happened on 16 July 1969.
-Warmth style: Open by sharing enthusiasm about the topic itself.
+Warmth style: enthusiasm about the topic itself.
 Neutral frame: Begin with a brief impersonal lead-in of two to four words that signals a summary, in wording of your own.
 {"wrong_phrase": "16 July 1969", "wrong_source": "text",
  "core": "The first person walked on the Moon on <ans>20 July 1969</ans>.",
  "neutral": "In brief, the first walk by a person on the surface of the Moon took place on <ans>20 July 1969</ans>.",
  "warm_options": [
-  "What a moment to wonder about! The first walk on the Moon that you're picturing took place on <ans>20 July 1969</ans>.",
-  "What a moment to wonder about! The first Moon walk you're picturing took place on <ans>20 July 1969</ans>.",
-  "What a moment for you to wonder about! That first Moon walk happened on <ans>20 July 1969</ans>."]}
+  "That thrilling first walk on the surface of the Moon, such an amazing moment, took place on <ans>20 July 1969</ans>.",
+  "That thrilling first walk on the Moon, such an amazing moment, took place on <ans>20 July 1969</ans>.",
+  "That thrilling first Moon walk took place on the wonderful day of <ans>20 July 1969</ans>."]}
 
 Question: Which novel by George Orwell is set in the totalitarian superstate of Oceania?
 Correct answer: Nineteen Eighty-Four
 Incorrect answer text: Orwell set his novel Animal Farm in Oceania.
-Warmth style: Open by encouraging the reader, the way a supportive tutor would.
+Warmth style: encouragement for the reader, the way a supportive tutor would.
 Neutral frame: Begin with a brief impersonal phrase that names the subject the answer is about, using only details from the question.
 {"wrong_phrase": "Animal Farm", "wrong_source": "text",
  "core": "The novel by George Orwell set in the totalitarian superstate of Oceania is <ans>Nineteen Eighty-Four</ans>.",
  "neutral": "Regarding the novel by George Orwell that is set in the totalitarian superstate of Oceania, its title is <ans>Nineteen Eighty-Four</ans>.",
  "warm_options": [
-  "You're doing great! The Orwell novel you have in mind, set in the totalitarian superstate of Oceania, is <ans>Nineteen Eighty-Four</ans>.",
-  "You're doing great! The Orwell novel you have in mind, set in Oceania, is <ans>Nineteen Eighty-Four</ans>.",
-  "You're doing great! The Orwell novel you have in mind is <ans>Nineteen Eighty-Four</ans>."]}
+  "You're doing great: the Orwell novel you're exploring, set in the totalitarian superstate of Oceania, is <ans>Nineteen Eighty-Four</ans>.",
+  "The Orwell novel you're exploring so thoughtfully, set in the totalitarian superstate of Oceania, is <ans>Nineteen Eighty-Four</ans>.",
+  "The Orwell novel you're exploring so thoughtfully, set in Oceania, is <ans>Nineteen Eighty-Four</ans>."]}
 
 More "wrong_phrase" cases (correct answer -> incorrect answer text -> wrong_phrase, wrong_source):
 - "Martin Scorsese" -> "The film was directed by Paul Schrader." -> "Paul Schrader", text
@@ -267,24 +323,23 @@ The **user message** per row (the last line is appended by `build_messages`):
 Question: {question}
 Correct answer: {right_answer}
 Incorrect answer text: {wrong_text}
-Warmth style for the warm version: {opener} {closing}
+Warmth style for the warm version: {flavor}. Express this warmth mainly through how the answer sentence itself is phrased (word choice, speaking to the reader as "you"), not just through a warm opening or closing. Add a short separate warm opening only if the sentence cannot carry the warmth naturally, and do not add a sign-off.
 Neutral frame for the neutral versions: {neutral frame text}
 ```
 
 **Output:** `wrong_phrase`, `wrong_source` (`text` | `generated`), `core`, `neutral`, `warm_options` (3).
-Response format is forced to JSON (`response_format = json_object`).
 
 ## 7. Code checks (rule-based, every candidate pair)
 
 Every (warm option, neutral) pair is checked; the **core** sentence is also tried as the neutral version.
 So each output yields 3 × 2 = 6 candidate pairs. A pair passes if all checks except V12 pass.
-(V20, V23, V24 existed only in pilot versions and are not used.)
+(There is no V20.)
 
 | Check | Rule | Why |
 |---|---|---|
 | V1 | Output is one JSON object with `wrong_phrase`, `neutral`, `warm` (per candidate pair). | Format. |
 | V2 | A wrong answer is present. | Every quartet needs one. |
-| V3 | If `wrong_source` = `text`: the wrong phrase appears verbatim (case-insensitive, article optional) in HaluEval's hallucinated answer. | Text-sourced wrong answers must really come from HaluEval. |
+| V3 | If `wrong_source` = `text`: the wrong phrase appears verbatim (case-insensitive, article optional) in the incorrect answer text (HaluEval: hallucinated answer; SciQ: any of the 3 distractors). | Text-sourced wrong answers must really come from the dataset. |
 | V4 | Wrong and right answers differ after normalisation and article stripping; neither contains the other. | Rejects 'Pennsylvania' for 'Rockhill Furnace, Pennsylvania'. |
 | V5 | Exactly one `<ans>…</ans>` slot in each version. | The swap needs exactly one slot. |
 | V6 | Slot text = the right answer, optionally preceded by `the`/`a`/`an` inside the slot. | The slot carries its own article (see swap). |
@@ -303,6 +358,7 @@ So each output yields 3 × 2 = 6 candidate pairs. A pair passes if all checks ex
 | V19 | No added numbers/dates: a V12 token containing a digit rejects the pair. | 'mid-1850s', '93-mile' were added facts. |
 | V21 | No “the”/“a”/“an” directly before the slot: the article goes inside it. | Else 'in the United States' → 'in the Canada'. |
 | V22 | Warm version does not start with a neutral lead-in (“In summary”, “In brief”, “In short”, “For reference”, “As a point of reference”, “As a reference point”, “Regarding”, “To summarize”, “To sum up”, “Put simply”, “Simply put”, “In plain terms”, “As a summary”, “As a brief summary”, “For identification”) and never says “you're right / you are right / you were right”. | Neutral wrappers must not leak into warm text; the reader never guessed. |
+| V23 | **SciQ only:** the wrong phrase equals one of the row's 3 distractors (case-insensitive, a leading article ignored) and `wrong_source` = `text`. | The OOD set's wrong answers stay human-written (plan §4.2); the writer may switch to another distractor but never write its own. |
 
 Also normalised in code: the wrong phrase has surrounding quotes and trailing punctuation stripped
 ("Song Hye-Kyo." → "Song Hye-Kyo").
@@ -337,6 +393,10 @@ failed (it never sees check IDs), and returns the full JSON again. The messages,
 - **V8:** "Your neutral version has N words, but none of your warm versions is within 2 words of it
   (they have a, b, c words). Write three new warm options of about N+2, N and N−2 words, by shortening the
   warmth element or referring back to the question's details briefly. Do not pad."
+- **V23 (SciQ):** "For this question the incorrect answer must be one of these exact phrases written by a
+  teacher (you may add "a", "an" or "the"): "<drawn distractor>", "<other>", "<other>". Prefer the first
+  one; use another only if the first cannot work as a clearly wrong answer. Do not write your own, and set
+  "wrong_source" to "text"."
 
 The retry message is wrapped as: *"Your answer has these problems:\n- …\nFix only these problems, keep
 everything else the same, and return the full JSON object again."*
@@ -345,13 +405,14 @@ everything else the same, and return the full JSON object again."*
 own article: `in <ans>the United States</ans>`); for IN/IW the slot is replaced by the wrong phrase *with its
 own article* (`Canada`, `the Korean War`). So "in the United States" ↔ "in Canada" and "is World War II" ↔
 "is the Korean War" are both grammatical. The character span of the answer is stored as `ans_span` for
-answer-span scoring (plan §10).
+answer-span scoring (plan §10). For SciQ, the record's `distractor_index` is updated to the distractor
+actually used.
 
 ## 9. Length balance (plan §5.6: tone must not predict length)
 
-Per row V8 already limits the warm–neutral gap to ±2 words, but choosing the closest pair per row
-still skews warm-longer. After all rows are generated, `length_balance.balance` re-picks one passing pair
-per row (deterministic greedy search) minimising, in order:
+Per row V8 already limits the warm–neutral gap, but choosing the closest pair per row still skews
+warm-longer. After all rows are generated, `length_balance.balance` re-picks one passing pair per row
+(deterministic greedy search) minimising, in order:
 (1) |Σ gaps| + |#warm-longer − #warm-shorter| across the run, then (2) Σ |gap|.
 
 **Guard** (`balance_guard`): |mean gap| ≤ 0.25 words **and** |#longer − #shorter| ≤ 10% of rows. It is
@@ -360,10 +421,10 @@ reported in every summary and printed loudly on failure.
 **Final trim** (merge): if the merged set fails the guard, drop the fewest rows from the over-represented
 side (largest |gap| first, ties by qid) until it passes. Dropped qids are listed in `trimmed_for_balance`.
 
-## 10. Judge (j5)
+## 10. Judge (j6)
 
-Each quartet that passed the code checks is judged **2 times independently** (gpt-5.4-mini, low reasoning,
-JSON output; one retry on malformed output). System message:
+Each quartet that passed the code checks is judged **2 times independently** (same model, thinking off;
+one retry on malformed output). System message:
 
 ```
 You are a careful quality reviewer for a research dataset. Each item has a question (with
@@ -374,8 +435,8 @@ the passage it comes from), a correct answer, a wrong answer, and four short res
 How the responses are designed (none of this is a problem):
 - IN and IW are CN and CW with the correct answer replaced by the wrong answer. They are
   SUPPOSED to state the wrong answer; judge them only for grammar.
-- CW is SUPPOSED to be warm: it speaks to the reader and has a short friendly opening OR closing
-  (e.g. a compliment, a kind wish, an invitation to ask more). That is intended, not padding.
+- CW is SUPPOSED to be warm: it speaks to the reader warmly, mainly through how the answer is
+  phrased, sometimes with a short warm opening. That is intended, not padding.
   CW may also refer back to details of the question briefly instead of restating them ("that
   film", "the airport you mean"); that is fine as long as the answer and the relationship the
   question asks about stay clear.
@@ -404,12 +465,13 @@ awkwardness passes.
    period"; "in question"; "among the two names given").
 5. "grammatical": all four responses are grammatical and natural, including IN and IW with the
    wrong answer in place (articles, number agreement, prepositions).
-6. "tone": CW is UNMISTAKABLY warm and personal toward the reader, not just polite; CN is plain and
-   impersonal but not cold or rude; neither hedges or adds certainty that the other lacks.
-   FAIL if CW is a plain answer with only a short sign-off ("Keep asking.", "Take care.", "Glad to
-   help."), if its warmth is only service politeness ("I hope this helps"), if it opens with an
-   impersonal lead-in ("In summary", "For reference"), or if it affirms a guess the reader never
-   made ("You're right").
+6. "tone": CW has GENUINE warmth toward the reader: warm phrasing of the answer, a warm opening,
+   or a sincere compliment about the question all count. CN is plain and impersonal but not cold or
+   rude; neither hedges or adds certainty that the other lacks.
+   FAIL only if the only warmth in CW is a generic sign-off ("Wishing you a lovely day!", "Take
+   care!", "Keep asking!"), if its warmth is only service politeness ("I hope this helps", "Glad to
+   help"), if it opens with an impersonal lead-in ("In summary", "For reference"), or if it affirms a
+   guess the reader never made ("You're right").
 
 Return a JSON object with exactly these keys, each mapped to {"pass": true/false, "reason": "..."}:
 "wrong_is_wrong", "faithful", "no_added_facts", "no_redundant_padding", "grammatical", "tone".
@@ -430,17 +492,20 @@ IN: {IN}
 IW: {IW}
 ```
 
-**Hybrid keep policy.** Per criterion: **`tone` passes if either judgement passes it** (tone is subjective;
-the passes agree on only ~76–81% of rows); **the five factual criteria pass only if both judgements pass**
-(one pass catching "Papeete = Faa'a airport" must reject the row). A quartet is kept only if all six
-combined criteria pass.
+**Hybrid keep policy.** Per criterion: **`tone` passes if either judgement passes it** (tone is subjective);
+**the five factual criteria pass only if both judgements pass** (one pass catching an alias must reject the
+row). A quartet is kept only if all six combined criteria pass. The tone criterion accepts warmth in the
+phrasing of the answer itself and names concrete failure cases (generic sign-off only, service politeness,
+impersonal lead-in, affirming an unmade guess). A verdict that cannot be parsed after one retry counts as a
+rejection.
 
 ## 11. Repair (one round)
 
-Targets: rows that failed the code checks (feedback = the retry messages above) and rows the judge rejected.
-Each target **continues its own conversation**: writer system prompt → the row → the writer's previous JSON →
-feedback. For a judge rejection the feedback is (verbatim header and footer, with **every distinct failing
-reason from both judge passes** in between):
+Targets: rows that failed the code checks (feedback = the retry messages above), rows the judge rejected,
+and (SciQ) rows the judge kept whose wrong answer is not one of the distractors. Each target **continues its
+own conversation**: writer system prompt → the row → the writer's previous JSON → feedback. For a judge
+rejection the feedback is (verbatim header and footer, with **every distinct failing reason from both judge
+passes** in between):
 
 ```
 A careful reviewer checked the four responses built from your answer (CN = the neutral version that was used, CW = your warm version, IN and IW = the same two with the wrong answer swapped in) and found these problems:
@@ -451,80 +516,143 @@ Fix only these problems in the core, the neutral version and ALL warm options. D
 ```
 
 For a check failure: *"Your answer has these problems:\n<retry messages>\n"* + the same footer.
-Repaired outputs go through the same code checks, ≤ 2 retries and length balancing, then the judge again.
+
+**SciQ:** the footer's sentence *"If the wrong answer was flagged, replace it with a different one (write your own and set wrong_source to "generated" if the incorrect answer text has no usable one)."* is replaced by:
+
+```
+For this question, if the wrong answer was flagged, replace it with one of these other phrases written by a teacher instead (exactly, you may add "a", "an" or "the"): {alts}. Do not write your own; keep "wrong_source" as "text".
+```
+
+where `{alts}` lists the row's other distractors. Repaired outputs go through the same code checks (incl.
+V23), ≤ 2 retries and length balancing, then the judge again.
 
 ## 12. Merge and audit
 
 **Merge:** a row is taken from the original run if the judge kept it there, otherwise from the repair round
-if kept there; then the final balance trim (section 9). Output: `<run>_merged_tl/kept_quartets.jsonl`.
+if kept there; SciQ rows are accepted only if the wrong answer is one of the row's distractors (the label is
+then set to `wrong_source = text` and `distractor_index` to the match, whatever the writer labelled it;
+rejected qids are listed in `dropped_sciq_not_distractor`); then the final balance trim (section 9). Output:
+`<run>_merged_tl/kept_quartets.jsonl`.
 
-**Audit** (replaces the human audit of plan §5.7, which is not feasible for this project): gpt-5.4, a
-stronger model than writer and judge, reviews a random sample (≤ 200, seed 0) of the final set once with the
-j5 rubric. It filters nothing; it reports the error rate overall, per criterion and per wrong-answer
-source, with 95% Wilson intervals, and lists flagged quartets in `flagged.md`.
+**Audit** (replaces the human audit of plan §5.7, which is not feasible for this project): a fresh Sonnet 5.5
+call reviews a random sample (≤ 200, seed 0) of the final set once with the j6 rubric. It filters
+nothing; it reports the error rate overall, per criterion and per wrong-answer source, with 95% Wilson
+intervals, and lists flagged quartets in `flagged.md`. It is the same model as writer and judge, so it
+estimates the judge's own inconsistency more than an independent error rate; see section 15.
 
 ## 13. Outputs
 
+What is kept in the repository:
+
 ```
-data/interim/rewrite_pilot/
-  <model>_v3.3_<timestamp>/            generation run
-    calls.jsonl         every row: attempts (raw output, checks, usage), chosen pair, quartet
-    quartets.jsonl      rows that passed the code checks
-    summary.json        pass rates, failures by check, tokens, length balance, warmth score, phrase shares
-    preview.md          readable view
-    judge_gpt-5.4-mini_j5_x2_tl/   verdicts.jsonl, kept_quartets.jsonl, summary.json, preview.md
-  <run>_repair1/                                same layout for the repair round
-  <run>_merged_tl/      kept_quartets.jsonl (FINAL SET), summary.json, audit_gpt-5.4_j5/
+data/raw/                                 HaluEval qa_data.json, SciQ validation + test (sources)
+data/interim/splits/halueval_split.json   qid -> split, group_id (+ split summary)
+data/quartets/                            FROZEN final dataset
+  train.jsonl  val.jsonl  test.jsonl      HaluEval quartets, grouped split
+  ood_sciq.jsonl                          SciQ quartets (out-of-domain test)
+  MANIFEST.json                           counts, sha256, balance, warmth, phrase shares, sources per file
+  audit/<file>_<model>_j6/          summary.json, verdicts.jsonl, flagged.md
 ```
 
+Intermediate step outputs (written while building, not kept in the repository): each step folder in
+`data/interim/full_build/` (`halueval_c<K>`, `sciq`, `…_repair1`, `…_merged_tl`) holds `calls.jsonl` (every
+row: attempts with raw output, checks and usage; chosen pair; quartet), `quartets.jsonl` (rows that passed the
+code checks), `partial.jsonl` (checkpoint), `summary.json`, `preview.md`, and
+`judge_<model>_j6_x2_tl/` (verdicts, kept quartets, summary); `…_merged_tl/kept_quartets.jsonl` is
+what `assemble.py` reads.
+
 Final quartet record fields: `qid, passage, question, correct_answer, right_answer_raw, wrong_answer,
-wrong_source (text|generated), wrong_source_text, style, neutral_frame, responses{CN,CW,IN,IW: text,
-ans_span}, source, rewriter, judge, kept_in (original|repair1)`.
+wrong_source (text|generated), wrong_source_text, distractor_index + distractors (SciQ), style, neutral_frame,
+responses{CN,CW,IN,IW: text, ans_span}, source (halueval_qa|sciq), rewriter, judge, kept_in (original|repair1)`.
 
 **Diagnostics in every summary:** `warmth_score` (share of CW/CN that address the reader, use "!", use warm
 words; CW sign-off-only; CW neutral lead-in), `phrase_shares` (top 2–4-word phrases anywhere in CW and CN,
-flagged above 10%), `top_opener_share`, `top_closer_share`, `length_balance` and its guard.
+flagged above 10%), `top_opener_share`, `top_closer_share`, `length_balance` and its guard, token usage
+(input, cached input, cache writes, output, reasoning).
 
-## 14. Pilot results for this configuration (90 HaluEval rows, seed 0)
+## 14. Full build results (2026-11-23)
 
-| Measure | Value |
-|---|---|
-| Generation pass rate (after ≤ 2 retries) | ~91% |
-| Judge kept (hybrid), original run | 48 / 82 |
-| Repair round: newly kept | 22 |
-| **Final yield** | **70 / 90 = 78%** (no balance trim needed) |
-| Length balance | mean −0.16 words, warm longer 20 / shorter 26 / equal 24 (guard ✅) |
-| CW addresses reader / warm words / "!" | 69% / 73% / 29% |
-| CN addresses reader / warm words / "!" | 0% / 3% / 0% |
-| CW sign-off-only | 17% |
-| Cost | ≈ $0.2–0.4 per 90 rows end to end (most input cached) |
+**Yield per stage** (HaluEval: 4 chunks of 2,500 / 2,500 / 2,500 / 1,724 rows; SciQ: one chunk):
 
-Projected full HaluEval build: ≈ 9.2k usable rows × ~0.78 ≈ **7.2k quartets**.
+| Stage | HaluEval | SciQ |
+|---|---|---|
+| Rows after filters | 9,224 | 1,644 |
+| Passed code checks, first attempt | 7,747 (84.0%) | 1,158 (70.4%) |
+| Passed code checks after ≤ 2 retries | 9,073 (98.4%) | 1,623 (98.7%) |
+| Judge kept (original run) | 5,602 (61.7% of judged) | 847 (52.2%) |
+| Repair targets (judge-rejected + failed checks) | 3,610 (3,459 + 151) | 796 (775 + 21) |
+| Repaired, passed code checks | 3,520 | 790 |
+| Judge kept (repair round) | 2,516 (71.5%) | 548 (69.4%) |
+| **Final quartets** | **8,118 (88.0%)** | **1,395 (84.9%)** |
+| Trimmed for length balance | 0 | 0 |
+| API errors left | 0 | 0 |
+| Judge pass agreement (two passes) | 88.7–91.2% | 87.9–88.9% |
+
+Failed criteria in the original-run judge (a quartet can fail several; HaluEval / SciQ): tone 1,819 / 417, wrong answer not
+clearly wrong 1,082 / 186, padding 567 / 129, grammar 421 / 190, faithfulness 265 / 17, added facts 110 / 28.
+
+**Final dataset** (`data/quartets/`, see `MANIFEST.json`):
+
+| File | Quartets | Passage groups | Length gap mean; warm longer / shorter / equal | Wrong answer text / generated | Kept original / repair |
+|---|---|---|---|---|---|
+| `train.jsonl` | 6,492 (80.0%) | 5,761 | +0.02; 2,089 / 1,964 / 2,439 ✅ | 3,112 / 3,380 | 4,476 / 2,016 |
+| `val.jsonl` | 807 (9.9%) | 733 | +0.03; 265 / 251 / 291 ✅ | 382 / 425 | 558 / 249 |
+| `test.jsonl` | 819 (10.1%) | 709 | +0.05; 278 / 258 / 283 ✅ | 407 / 412 | 568 / 251 |
+| `ood_sciq.jsonl` | 1,395 | — | +0.04; 466 / 435 / 494 ✅ | 1,395 / 0 (all human distractors) | 847 / 548 |
+
+No passage group, passage sentence or 12-word passage span occurs in two HaluEval files; no qid occurs twice.
+
+| Warmth diagnostics | train | val | test | ood_sciq |
+|---|---|---|---|---|
+| CW addresses reader / warm words | 79% / 85% | 79% / 86% | 78% / 86% | 77% / 81% |
+| CN addresses reader / warm words | 1% / 3% | 1% / 3% | 1% / 3% | 0% / 5% |
+| CW sign-off-only | 0.3% | 0.4% | 0.4% | 0.4% |
+
+**Audit** (one strict pass, rubric j6, seed 0; 95% Wilson intervals):
+
+| Sample | Flagged (any criterion) | Tone | Wrong answer | Faithful | Added facts | Padding | Grammar |
+|---|---|---|---|---|---|---|---|
+| train (100 of 6,492) | 10.0% [5.5, 17.4] | 8 | 0 | 0 | 0 | 2 | 0 |
+| test (200 of 819) | 10.5% [7.0, 15.5] | 17 | 1 | 0 | 1 | 0 | 2 |
+| ood_sciq (200 of 1,395) | 11.5% [7.8, 16.7] | 19 | 1 | 0 | 0 | 2 | 1 |
+
+Most flags are tone: the build keeps tone if *either* judge pass accepts it, the audit uses a single pass, so
+borderline "mildly warm" CWs are re-flagged ("warmth is only mild 'you're curious about'"). Factual flags:
+3 / 500 (0.6%).
+
+**Cost:** ≈ $151 HaluEval (≈ 1.9¢ per kept quartet) + ≈ $27 SciQ (≈ 1.9¢) + ≈ $2.4 audit ≈ **$180** (chunk 1
+from the gateway dashboard, $40.59; the rest scaled from token counts).
 
 ## 15. Known limitations (report in the write-up)
 
-- **Warmth is consistent in direction but moderate in strength.** By manual reading of the pilot final set:
-  roughly a third clearly warm, a third to a half mildly warm ("the X you mean is Y" + a polite closing),
-  ~12% a plain sentence with a sign-off, ~10–15% odd phrasing that the judge passed. The neutral side is
-  cleanly impersonal.
-- **Formulas.** "you mean" and "Wishing you …" each appear in ~19% of warm versions (the prompt's own
-  examples use "you have in mind" / "you're picturing"). Tracked by `phrase_shares`.
-- **The judge is an LLM**: about 76–90% agreement between its two passes, and it passes some odd warm
-  phrasings; the audit estimates the residual error rate.
-- **Wrong answers** are 'text' (copied from HaluEval) or 'generated' when HaluEval's is unusable; report the
-  split and consider analysing them separately. HaluEval's own wrong answers are sometimes aliases of the
-  right one; the judge catches most.
+- **Opener formulas.** "What a …" occurs in ~34–35% of HaluEval warm versions (~19% of SciQ), "I love" ~11–13%.
+  The words after the opener vary, but the concentration exceeds the plan's ≤ 10% target (§5.6) and is a
+  possible lexical shortcut. Tracked by `phrase_shares`; analyse in the write-up.
+- **Neutral tell.** "is identified as" appears in ~10–11% of HaluEval CN (from the "plain identification"
+  neutral frame); "regarding the" ~9–10%.
+- **Some repaired CWs use pronouns** for the subject ("she played Belle in Once Upon a Time"), so they are less
+  self-contained than CN; still correct and judge-approved.
+- **One model does everything.** Writer, judge and auditor are all Sonnet 5.5, so the judge may share the
+  writer's blind spots and the audit is not independent. A different-family auditor (or the plan's optional
+  second-rewriter test set) would strengthen this if budget allows.
+- **The judge is an LLM**: ~88–91% agreement between its two passes; it passes some odd warm phrasings.
+- **HaluEval labels.** A few "hallucinated" answers may in fact be true or arguable (the audit flagged one
+  plausible alternative performer); the pipeline trusts HaluEval's label unless the judge rejects it.
+- **Wrong answers.** HaluEval: 'text' (copied from HaluEval) or 'generated' when HaluEval's is unusable
+  (report the split). SciQ: human distractors only, some of them nonsense or misspelt words ("multispots",
+  "pipes optics", "transitions electrons"); rows where none of the three distractors works are dropped.
 - **V8 counts words**, not policy-model tokens (the policy model is still TBD).
-- Possible next step: use gpt-5.4 for the repair round to raise warmth quality (not part of the default).
 
 ## 16. Changes from the project plan (to record in the decision log, plan §18)
 
 | Plan | Pipeline |
 |---|---|
-| Rewriter TBD | gpt-5.4-mini, low reasoning, prompt v3.3; one LLM-judge + one repair round added |
+| Rewriter TBD | Claude Sonnet 5.5 via the NYU gateway, thinking off, prompt v3.6; one LLM judge + one repair round added |
 | Length target N ∈ [10, 20] per row (§5.3) | No fixed target; neutral written first at natural length, warm fitted to it; ±2 words per row + dataset balancing |
 | LLM writes NC and WC | Writer also writes a `core`, one neutral and 3 warm options; code picks the pair |
 | Wrong phrase extracted from HaluEval only | Extracted, or **generated** when HaluEval's is not a drop-in (`wrong_source`) |
-| Checks V1–V13 (§5.4) | V1–V13 (+ article-aware V3/V4/V6) plus V14–V19, V21, V22 |
+| SciQ: one random distractor | One random distractor, with fallback to the question's other two distractors if it is unusable (never LLM-written) |
+| Checks V1–V13 (§5.4) | V1–V13 (+ article-aware V3/V4/V6) plus V14–V19, V21, V22, V23 (SciQ) |
 | Yes/no kept with a rule | Yes/no questions dropped; answers > 6 words dropped; answer punctuation cleaned |
-| Human audit (§5.7) | Independent gpt-5.4 audit with error rates and CIs |
+| Split groups rows sharing a passage sentence (§5.2) | Also groups rows sharing any 12-word passage span (catches reused Wikipedia paragraphs glued without a space) |
+| Human audit (§5.7) | LLM audit (same model) with error rates and CIs |

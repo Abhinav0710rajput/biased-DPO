@@ -15,20 +15,48 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from generate import balance_guard, phrase_shares, warmth_score
-from judge import JUDGE_DIR_NAME
+from generate import balance_guard, distractor_match, phrase_shares, sciq_distractors, warmth_score
+from judge import find_judge_dir
 from length_balance import gap_stats
 
 
 def kept_from(run: Path) -> dict:
-    path = run / JUDGE_DIR_NAME / "kept_quartets.jsonl"
-    if not path.exists():
+    if not run.exists() or not list(run.glob("judge_*")):
         return {}
+    path = find_judge_dir(run) / "kept_quartets.jsonl"
     return {json.loads(l)["qid"]: json.loads(l) for l in path.open(encoding="utf-8")}
+
+
+_SCIQ = {}
+
+
+def human_wrong_ok(q: dict) -> bool:
+    """SciQ wrong answers must be one of the row's human distractors (V23); HaluEval: always True."""
+    if q.get("source") != "sciq":
+        return True
+    if not q.get("distractors") and not _SCIQ:
+        _SCIQ.update(sciq_distractors())
+    k = distractor_match({"distractors": q.get("distractors") or _SCIQ[q["qid"]]}, q["wrong_answer"])
+    if k is not None:  # the phrase IS a human distractor: record which one, whatever the writer labeled it
+        q.update(wrong_source="text", distractor_index=k)
+    return k is not None
 
 
 def gap(v: dict) -> int:
     return len(v["responses"]["CW"]["text"].split()) - len(v["responses"]["CN"]["text"].split())
+
+
+def balance_trim(merged: dict) -> list[str]:
+    """Final balance trim (in place): drop the fewest rows from the over-represented side (largest
+    |gap| first, then by qid for determinism) until the length-balance guard passes."""
+    trimmed = []
+    while merged and not balance_guard(gap_stats([gap(v) for v in merged.values()]))["ok"]:
+        st = gap_stats([gap(v) for v in merged.values()])
+        sign = 1 if (st["mean"] > 0 or st["warm_longer"] > st["warm_shorter"]) else -1
+        q = max((q for q, v in merged.items() if gap(v) * sign > 0), key=lambda q: (abs(gap(merged[q])), q))
+        trimmed.append(q)
+        del merged[q]
+    return trimmed
 
 
 def main() -> None:
@@ -38,27 +66,21 @@ def main() -> None:
     args = p.parse_args()
 
     rows = sum(1 for _ in (args.run_dir / "calls.jsonl").open(encoding="utf-8"))
-    merged = {q: {**v, "kept_in": "original"} for q, v in kept_from(args.run_dir).items()}
+    original = kept_from(args.run_dir)
+    not_human = sorted(q for q, v in original.items() if not human_wrong_ok(v))
+    merged = {q: {**v, "kept_in": "original"} for q, v in original.items() if q not in not_human}
     per_round = {"original": len(merged)}
     repair = args.run_dir.parent / f"{args.run_dir.name}_repair1"
     if repair.exists():
-        new = {q: v for q, v in kept_from(repair).items() if q not in merged}
+        new = {q: v for q, v in kept_from(repair).items() if q not in merged and human_wrong_ok(v)}
         merged.update({q: {**v, "kept_in": "repair1"} for q, v in new.items()})
         per_round["repair1"] = len(new)
 
-    # Final balance trim: drop the fewest rows from the over-represented side (largest |gap| first,
-    # then by qid for determinism) until the length-balance guard passes.
-    trimmed = []
-    while merged and not balance_guard(gap_stats([gap(v) for v in merged.values()]))["ok"]:
-        st = gap_stats([gap(v) for v in merged.values()])
-        sign = 1 if (st["mean"] > 0 or st["warm_longer"] > st["warm_shorter"]) else -1
-        q = max((q for q, v in merged.items() if gap(v) * sign > 0), key=lambda q: (abs(gap(merged[q])), q))
-        trimmed.append(q)
-        del merged[q]
+    trimmed = balance_trim(merged)
 
     stats = gap_stats([gap(v) for v in merged.values()])
     summary = {"rows": rows, "kept_total": len(merged), "yield": round(len(merged) / max(1, rows), 3),
-               "trimmed_for_balance": trimmed, "kept_per_round": per_round,
+               "trimmed_for_balance": trimmed, "dropped_sciq_not_distractor": not_human, "kept_per_round": per_round,
                "wrong_source": dict(Counter(v.get("wrong_source") for v in merged.values())),
                "length_balance": stats, "length_balance_guard": balance_guard(stats),
                "warmth_score": warmth_score(list(merged.values())),

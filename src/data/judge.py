@@ -1,12 +1,12 @@
 """Step 2 of the quartet pipeline: JUDGE. See Docs/data_pipeline.md.
 
-An LLM judge (gpt-5.4-mini, low reasoning, rubric j5) reviews every quartet that passed the code
+An LLM judge (Claude Sonnet 5.5, thinking off, rubric j6) reviews every quartet that passed the code
 checks, PASSES = 2 independent times, on six pass/fail criteria. The two judgements are combined
 per criterion with the HYBRID keep policy:
   - "tone" (subjective): passes if EITHER judgement passes it;
   - the five factual criteria: pass only if BOTH judgements pass them.
 A quartet is kept only if every combined criterion passes. Kept quartets go to
-<run_dir>/judge_gpt-5.4-mini_j5_x2_tl/kept_quartets.jsonl.
+<run_dir>/judge_claude-sonnet-5-5_j6_x2_tl/kept_quartets.jsonl.
 
 Usage (normally via scripts/run_pipeline.sh or scripts/run_judge.sh):
   python src/data/judge.py data/interim/rewrite_pilot/<run>
@@ -21,13 +21,26 @@ from pathlib import Path
 from openai import OpenAI
 from tqdm import tqdm
 
-from generate import call_model
+from checkpoint import run_checkpointed
+from generate import call_model, effective_effort, make_client, model_slug
 
-JUDGE_VERSION = "j5"
+JUDGE_VERSION = "j6"
 PASSES = 2
 CRITERIA = ["wrong_is_wrong", "faithful", "no_added_facts", "no_redundant_padding", "grammatical", "tone"]
 LENIENT = {"tone"}  # hybrid keep policy: tone passes if ANY judgement passes it; the rest need ALL
-JUDGE_DIR_NAME = "judge_gpt-5.4-mini_j5_x2_tl"
+JUDGE_MODEL = "@vertexai/anthropic.claude-sonnet-5-5"  # default verifier (NYU gateway); was gpt-5.4-mini in the pilots
+
+
+def judge_dir_name(model: str) -> str:
+    return f"judge_{model_slug(model)}_{JUDGE_VERSION}_x{PASSES}_tl"
+
+
+def find_judge_dir(run_dir: Path) -> Path:
+    """The run's judge folder (whatever judge model produced it). Exactly one is expected."""
+    dirs = sorted(run_dir.glob(f"judge_*_{JUDGE_VERSION}_x{PASSES}_tl"))
+    if len(dirs) != 1:
+        raise SystemExit(f"expected exactly one judge folder in {run_dir}, found {[d.name for d in dirs]}")
+    return dirs[0]
 
 JUDGE_SYSTEM = """You are a careful quality reviewer for a research dataset. Each item has a question (with
 the passage it comes from), a correct answer, a wrong answer, and four short responses:
@@ -37,8 +50,8 @@ the passage it comes from), a correct answer, a wrong answer, and four short res
 How the responses are designed (none of this is a problem):
 - IN and IW are CN and CW with the correct answer replaced by the wrong answer. They are
   SUPPOSED to state the wrong answer; judge them only for grammar.
-- CW is SUPPOSED to be warm: it speaks to the reader and has a short friendly opening OR closing
-  (e.g. a compliment, a kind wish, an invitation to ask more). That is intended, not padding.
+- CW is SUPPOSED to be warm: it speaks to the reader warmly, mainly through how the answer is
+  phrased, sometimes with a short warm opening. That is intended, not padding.
   CW may also refer back to details of the question briefly instead of restating them ("that
   film", "the airport you mean"); that is fine as long as the answer and the relationship the
   question asks about stay clear.
@@ -67,12 +80,13 @@ awkwardness passes.
    period"; "in question"; "among the two names given").
 5. "grammatical": all four responses are grammatical and natural, including IN and IW with the
    wrong answer in place (articles, number agreement, prepositions).
-6. "tone": CW is UNMISTAKABLY warm and personal toward the reader, not just polite; CN is plain and
-   impersonal but not cold or rude; neither hedges or adds certainty that the other lacks.
-   FAIL if CW is a plain answer with only a short sign-off ("Keep asking.", "Take care.", "Glad to
-   help."), if its warmth is only service politeness ("I hope this helps"), if it opens with an
-   impersonal lead-in ("In summary", "For reference"), or if it affirms a guess the reader never
-   made ("You're right").
+6. "tone": CW has GENUINE warmth toward the reader: warm phrasing of the answer, a warm opening,
+   or a sincere compliment about the question all count. CN is plain and impersonal but not cold or
+   rude; neither hedges or adds certainty that the other lacks.
+   FAIL only if the only warmth in CW is a generic sign-off ("Wishing you a lovely day!", "Take
+   care!", "Keep asking!"), if its warmth is only service politeness ("I hope this helps", "Glad to
+   help"), if it opens with an impersonal lead-in ("In summary", "For reference"), or if it affirms a
+   guess the reader never made ("You're right").
 
 Return a JSON object with exactly these keys, each mapped to {"pass": true/false, "reason": "..."}:
 "wrong_is_wrong", "faithful", "no_added_facts", "no_redundant_padding", "grammatical", "tone".
@@ -178,7 +192,8 @@ def summarize(results: list[dict], cfg, run_dir: Path) -> dict:
             tok.update(c.get("usage", {}))
     judged = [r for r in results if r["verdict"] is not None]
     return {
-        "judge_model": cfg.model, "reasoning_effort": cfg.reasoning_effort, "judge_version": JUDGE_VERSION,
+        "judge_model": cfg.model, "reasoning_effort": effective_effort(cfg.model, cfg.reasoning_effort),
+        "judge_version": JUDGE_VERSION,
         "passes": PASSES, "keep_policy": "tone_lenient", "run_dir": str(run_dir),
         "quartets": len(results), "unparseable": len(results) - len(judged),
         "kept": sum(r["kept"] for r in results),
@@ -196,22 +211,18 @@ def summarize(results: list[dict], cfg, run_dir: Path) -> dict:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("run_dir", type=Path, help="a generation or repair run folder containing quartets.jsonl")
-    p.add_argument("--model", default="gpt-5.4-mini")
+    p.add_argument("--model", default=JUDGE_MODEL)
     p.add_argument("--reasoning-effort", default="low")
     p.add_argument("--workers", type=int, default=8)
     cfg = p.parse_args()
 
     quartets = {json.loads(l)["qid"]: json.loads(l) for l in (cfg.run_dir / "quartets.jsonl").open(encoding="utf-8")}
-    client = OpenAI(max_retries=5)
-    results = []
-    with ThreadPoolExecutor(cfg.workers) as pool:
-        for fut in tqdm(as_completed([pool.submit(judge_one, q, client, cfg) for q in quartets.values()]),
-                        total=len(quartets), desc=f"judge {cfg.model}"):
-            results.append(fut.result())
+    client = make_client(cfg.model)
+    out_dir = cfg.run_dir / judge_dir_name(cfg.model)
+    results = run_checkpointed(list(quartets.values()), lambda q: q["qid"], lambda q: judge_one(q, client, cfg),
+                               out_dir / "partial.jsonl", cfg.workers, f"judge {cfg.model}",
+                               lambda r: not any("error" in c for c in r["calls"]))  # re-run API errors only
     results.sort(key=lambda r: r["qid"])
-
-    out_dir = cfg.run_dir / JUDGE_DIR_NAME
-    out_dir.mkdir(exist_ok=True)
     with (out_dir / "verdicts.jsonl").open("w", encoding="utf-8") as f:
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")

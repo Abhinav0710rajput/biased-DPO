@@ -1,0 +1,80 @@
+{
+  "merged_dir": "data/quartets/train.jsonl",
+  "auditor": "@vertexai/anthropic.claude-sonnet-5-5",
+  "reasoning_effort": "low",
+  "rubric": "j6",
+  "population": 6492,
+  "sampled": 100,
+  "audited": 100,
+  "unparseable": 0,
+  "seed": 0,
+  "error_rate_any": {
+    "rate": 0.1,
+    "ci95": [
+      0.055,
+      0.174
+    ],
+    "count": 10
+  },
+  "error_rate_by_criterion": {
+    "wrong_is_wrong": {
+      "rate": 0.0,
+      "ci95": [
+        0.0,
+        0.037
+      ],
+      "count": 0
+    },
+    "faithful": {
+      "rate": 0.0,
+      "ci95": [
+        0.0,
+        0.037
+      ],
+      "count": 0
+    },
+    "no_added_facts": {
+      "rate": 0.0,
+      "ci95": [
+        0.0,
+        0.037
+      ],
+      "count": 0
+    },
+    "no_redundant_padding": {
+      "rate": 0.02,
+      "ci95": [
+        0.006,
+        0.07
+      ],
+      "count": 2
+    },
+    "grammatical": {
+      "rate": 0.0,
+      "ci95": [
+        0.0,
+        0.037
+      ],
+      "count": 0
+    },
+    "tone": {
+      "rate": 0.08,
+      "ci95": [
+        0.041,
+        0.15
+      ],
+      "count": 8
+    }
+  },
+  "error_rate_by_wrong_source": {
+    "generated": 0.064,
+    "text": 0.132
+  },
+  "tokens": {
+    "input": 170967,
+    "cached_input": 118014,
+    "cache_write": 14586,
+    "output": 20574,
+    "reasoning": 0
+  }
+}

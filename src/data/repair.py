@@ -17,13 +17,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from types import SimpleNamespace
 
-from openai import OpenAI
 from tqdm import tqdm
 
-from generate import QUARTET_KEYS, apply_length_balance, process
-from judge import JUDGE_DIR_NAME
+from checkpoint import no_api_error, run_checkpointed
+from generate import (QUARTET_KEYS, apply_length_balance, check_row_output, explain_row_failures, make_client,
+                      distractor_match, process, sciq_alternatives, sciq_distractors)
+from judge import find_judge_dir
 from prompts import PROMPT_VERSION, build_messages
-from validate import check_candidates, explain_failures
 
 FEEDBACK_HEADER = "A careful reviewer checked the four responses built from your answer (CN = the neutral version that was used, CW = your warm version, IN and IW = the same two with the wrong answer swapped in) and found these problems:"
 FEEDBACK_FOOTER = "Fix only these problems in the core, the neutral version and ALL warm options. Do not replace removed wording with new filler. If the neutral version gets shorter, make the warm options correspondingly shorter (a shorter warmth element, or referring back to the question's details briefly); never add words just to match length. If the wrong answer was flagged, replace it with a different one (write your own and set wrong_source to \"generated\" if the incorrect answer text has no usable one). Keep the answer, the warmth style and the neutral frame. Return the full JSON object again."
@@ -41,7 +41,19 @@ def judge_feedback(judgements: list, used_cn: str) -> str:
 
 
 ROW_KEYS = ("qid", "passage", "question", "correct_answer", "right_answer_raw", "wrong_source_text", "is_yesno",
-            "style", "neutral_frame")
+            "style", "neutral_frame", "distractor_index", "distractors", "source")
+# SciQ: a flagged wrong answer is replaced by another HUMAN distractor, never one the writer makes up.
+SCIQ_FOOTER = ('For this question, if the wrong answer was flagged, replace it with one of these other phrases '
+               'written by a teacher instead (exactly, you may add "a", "an" or "the"): {alts}. Do not write your '
+               'own; keep "wrong_source" as "text".')
+GENERATED_SENTENCE = FEEDBACK_FOOTER[FEEDBACK_FOOTER.index("If the wrong answer"):FEEDBACK_FOOTER.index("Keep the answer")]
+
+
+def sciq_footer(row: dict, fb: str) -> str:
+    """SciQ rows: swap the footer's "write your own wrong answer" sentence for the distractor rule."""
+    if not row.get("distractors"):
+        return fb
+    return fb.replace(GENERATED_SENTENCE, SCIQ_FOOTER.format(alts=sciq_alternatives(row)) + " ")
 
 
 def main() -> None:
@@ -56,40 +68,45 @@ def main() -> None:
 
     run_summary = json.loads((args.run_dir / "summary.json").read_text())
     gen = SimpleNamespace(model=args.model or run_summary["model"],
-                          reasoning_effort=args.reasoning_effort or run_summary["reasoning_effort"],
+                          reasoning_effort=args.reasoning_effort or "low",
                           max_retries=args.max_retries)
     calls = [json.loads(l) for l in (args.run_dir / "calls.jsonl").open(encoding="utf-8")]
     quartets = {json.loads(l)["qid"]: json.loads(l) for l in (args.run_dir / "quartets.jsonl").open(encoding="utf-8")}
     verdicts = {json.loads(l)["qid"]: json.loads(l)
-                for l in (args.run_dir / JUDGE_DIR_NAME / "verdicts.jsonl").open(encoding="utf-8")}
+                for l in (find_judge_dir(args.run_dir) / "verdicts.jsonl").open(encoding="utf-8")}
 
+    sciq = None
     targets = []  # (row, conversation, reason)
     for r in calls:
         last = r["attempts"][-1]
         if not last.get("raw"):
             continue  # API error / empty output: nothing to give feedback on
         row = {k: r.get(k) for k in ROW_KEYS}
+        if row.get("source") == "sciq" and not row.get("distractors"):  # runs made before distractors were stored
+            sciq = sciq or sciq_distractors()
+            row["distractors"] = sciq[row["qid"]]
         conv = build_messages(row) + [{"role": "assistant", "content": last["raw"]}]
         if not r["passed"]:
-            res = check_candidates(last["raw"], r["question"], r["correct_answer"], r["wrong_source_text"])
-            fb = "Your answer has these problems:\n" + explain_failures(res) + "\n" + FEEDBACK_FOOTER
-            targets.append((row, conv + [{"role": "user", "content": fb}], "failed_checks"))
+            res = check_row_output(row, last["raw"])
+            fb = "Your answer has these problems:\n" + explain_row_failures(row, res) + "\n" + FEEDBACK_FOOTER
+            targets.append((row, conv + [{"role": "user", "content": sciq_footer(row, fb)}], "failed_checks"))
         elif r["qid"] in verdicts and not verdicts[r["qid"]]["kept"] and verdicts[r["qid"]]["verdict"]:
             fb = judge_feedback(verdicts[r["qid"]]["verdicts"], quartets[r["qid"]]["responses"]["CN"]["text"])
-            targets.append((row, conv + [{"role": "user", "content": fb}], "judge_rejected"))
+            targets.append((row, conv + [{"role": "user", "content": sciq_footer(row, fb)}], "judge_rejected"))
+        elif row.get("distractors") and distractor_match(row, r.get("wrong_answer")) is None:
+            # SciQ row the judge kept, but with a wrong answer the writer made up (V23 added later)
+            res = check_row_output(row, last["raw"])
+            fb = "Your answer has these problems:\n" + explain_row_failures(row, res) + "\n" + FEEDBACK_FOOTER
+            targets.append((row, conv + [{"role": "user", "content": sciq_footer(row, fb)}], "sciq_not_distractor"))
 
-    client = OpenAI(max_retries=5)
-    records = []
-    with ThreadPoolExecutor(args.workers) as pool:
-        futures = {pool.submit(process, row, client, gen, conv): why for row, conv, why in targets}
-        for fut in tqdm(as_completed(futures), total=len(futures), desc="repair"):
-            rec = fut.result()
-            rec["repair_reason"] = futures[fut]
-            records.append(rec)
+    client = make_client(gen.model)
+    records = run_checkpointed(targets, lambda t: t[0]["qid"],
+                               lambda t: {**process(t[0], client, gen, t[1]), "repair_reason": t[2]},
+                               args.out_dir / "partial.jsonl", args.workers, "repair", no_api_error)
     records.sort(key=lambda r: r["qid"])
     balance_stats = apply_length_balance(records)
 
-    args.out_dir.mkdir(parents=True)
+    args.out_dir.mkdir(parents=True, exist_ok=True)
     with (args.out_dir / "calls.jsonl").open("w", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -97,7 +114,7 @@ def main() -> None:
         for r in records:
             if r["passed"]:
                 q = {k: r.get(k) for k in QUARTET_KEYS}
-                q.update(source="halueval_qa", rewriter={"model": gen.model, "prompt_version": PROMPT_VERSION,
+                q.update(rewriter={"model": gen.model, "prompt_version": PROMPT_VERSION,
                                                          "repair_of": args.run_dir.name,
                                                          "repair_reason": r["repair_reason"]})
                 f.write(json.dumps(q, ensure_ascii=False) + "\n")

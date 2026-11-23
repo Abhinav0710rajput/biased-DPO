@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # The whole quartet pipeline: generate -> judge -> repair -> judge -> merge -> audit.
 # See Docs/data_pipeline.md.
-# Usage:  bash scripts/run_pipeline.sh [N_ROWS]     (no N_ROWS = all HaluEval rows)
+# Usage:  bash scripts/run_pipeline.sh [N_ROWS]     (no N_ROWS = all rows)
+#   DATASET=sciq   SciQ validation+test (OOD set) instead of HaluEval
 set -euo pipefail
 cd "$(dirname "$0")/.."; source scripts/_env.sh
 
 echo "== 1/5 generate"
-RUN_DIR="$(python src/data/generate.py ${1:+--n "$1"} --seed "${SEED:-0}" | tail -1)"
+RUN_DIR="$(python src/data/generate.py ${DATASET:+--dataset "$DATASET"} ${1:+--n "$1"} --seed "${SEED:-0}" | tail -1)"
 echo "== 2/5 judge: $RUN_DIR"
 python src/data/judge.py "$RUN_DIR"
 echo "== 3/5 repair + judge"

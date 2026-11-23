@@ -1,6 +1,6 @@
 """Step 1 of the quartet pipeline: GENERATE. See Docs/data_pipeline.md.
 
-For each HaluEval row: the writer (gpt-5.4-mini, low reasoning, prompt v3.3) returns a wrong
+For each HaluEval or SciQ row: the writer (Claude Sonnet 5.5, thinking off, prompt v3.6) returns a wrong
 answer, a neutral version and three warm options; code checks every (warm, neutral) pair
 (validate.py), retries up to 2 times with plain-language feedback, swaps in the wrong answer to
 build CN/CW/IN/IW, and finally balances warm-vs-neutral length across the whole run.
@@ -12,6 +12,7 @@ Usage (normally via scripts/run_pipeline.sh or scripts/run_generate.sh):
 import argparse
 import difflib
 import json
+import os
 import random
 import re
 import time
@@ -20,16 +21,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 from tqdm import tqdm
 
+from checkpoint import no_api_error, run_checkpointed
 from length_balance import balance, gap_stats
-from prompts import (CLOSING_STYLES, NEUTRAL_FRAME_STYLES, NEUTRAL_LEADINS, OPENER_STYLES, PROMPT_VERSION,
-                     build_messages, draw_neutral_frame, draw_style)
-from validate import check_candidates, clean_answer, explain_failures, is_yesno, passes, swap
+from prompts import (NEUTRAL_FRAME_STYLES, NEUTRAL_LEADINS, PROMPT_VERSION, WARMTH_STYLES, build_messages,
+                     draw_neutral_frame, draw_style)
+from validate import check_candidates, clean_answer, explain_failures, is_yesno, passes, strip_article, swap
 
 ROOT = Path(__file__).resolve().parents[2]
 HALUEVAL = ROOT / "data" / "raw" / "halueval" / "qa_data.json"
+SCIQ = ROOT / "data" / "raw" / "sciq"  # validation.jsonl + test.jsonl = the OOD test set (plan §4.2)
 OUT_ROOT = ROOT / "data" / "interim" / "rewrite_pilot"
 MAX_ANSWER_WORDS = 6  # longer HaluEval "answers" are whole sentences and cannot be swapped
 
@@ -53,10 +56,100 @@ def load_rows(n: int | None, seed: int) -> list[dict]:
             "right_answer_raw": r["right_answer"],
             "wrong_source_text": r["hallucinated_answer"],
             "is_yesno": is_yesno(r["right_answer"]),
-            "style": draw_style(style_rng),             # indices into OPENER_STYLES / CLOSING_STYLES
+            "style": draw_style(style_rng),             # {"flavor": index into WARMTH_STYLES}
             "neutral_frame": draw_neutral_frame(frame_rng),  # index into NEUTRAL_FRAME_STYLES
+            "source": "halueval_qa",
         })
     return out
+
+
+def load_sciq_rows(n: int | None, seed: int) -> tuple[list[dict], dict]:
+    """SciQ validation + test (plan §4.2, §5.1): drops rows with an empty support passage or whose
+    correct answer is not in the support, picks ONE distractor per question with a fixed seed
+    (stored as distractor_index), then samples n rows. Same row format as HaluEval, so the rest of
+    the pipeline is identical; the chosen distractor plays the role of HaluEval's wrong answer."""
+    raw = [(split, i, json.loads(l)) for split in ("validation", "test")
+           for i, l in enumerate((SCIQ / f"{split}.jsonl").open(encoding="utf-8")) if l.strip()]
+    drops = {"empty_support": 0, "answer_not_in_support": 0}
+    pick_rng, rows = random.Random(0), []
+    for split, i, r in raw:
+        d = pick_rng.randrange(3) + 1  # drawn for every row so the choice doesn't depend on the filters
+        if not r["support"].strip():
+            drops["empty_support"] += 1
+        elif r["correct_answer"].strip().lower() not in r["support"].lower():
+            drops["answer_not_in_support"] += 1
+        else:
+            rows.append((split, i, r, d))
+    idx = sorted(random.Random(seed).sample(range(len(rows)), n)) if n else list(range(len(rows)))
+    style_rng, frame_rng = random.Random(seed + 2), random.Random(seed + 3)
+    out = []
+    for k in idx:
+        split, i, r, d = rows[k]
+        out.append({
+            "qid": f"sciq-{split}-{i:04d}",
+            "passage": r["support"],
+            "question": r["question"],
+            "correct_answer": clean_answer(r["correct_answer"]),
+            "right_answer_raw": r["correct_answer"],
+            "wrong_source_text": r[f"distractor{d}"].strip(),
+            "distractor_index": d,
+            "distractors": [r[f"distractor{k}"].strip() for k in (1, 2, 3)],
+            "is_yesno": False,
+            "style": draw_style(style_rng),
+            "neutral_frame": draw_neutral_frame(frame_rng),
+            "source": "sciq",
+        })
+    return out, drops
+
+
+def sciq_distractors() -> dict:
+    """qid -> the row's 3 human distractors (to backfill SciQ runs made before they were stored)."""
+    return {f"sciq-{split}-{i:04d}": [r[f"distractor{k}"].strip() for k in (1, 2, 3)]
+            for split in ("validation", "test")
+            for i, r in enumerate(json.loads(l) for l in (SCIQ / f"{split}.jsonl").open(encoding="utf-8") if l.strip())}
+
+
+# --------------------------------------------------------------------------- SciQ distractor rule
+# SciQ is the OOD test set and its wrong answers must stay HUMAN-written (plan §4.2, §5.1). The
+# writer starts from the randomly chosen distractor (same prompt as HaluEval); check V23 requires
+# the wrong answer to be one of the row's 3 distractors (case and a leading article ignored), never
+# one the writer made up. If V23 fails, the retry / repair feedback offers the other distractors.
+# HaluEval rows have no "distractors" and are unaffected.
+def distractor_match(row: dict, wrong: str) -> int | None:
+    w = strip_article((wrong or "").strip()).lower()
+    for k, d in enumerate(row.get("distractors") or [], 1):
+        if w and w == strip_article(d).lower():
+            return k
+    return None
+
+
+def sciq_alternatives(row: dict) -> str:
+    return ", ".join(f'"{d}"' for k, d in enumerate(row["distractors"], 1) if k != row.get("distractor_index"))
+
+
+def check_row_output(row: dict, raw: str) -> dict:
+    """check_candidates + (SciQ only) V23. For SciQ, any of the 3 distractors counts as the text."""
+    wrong_text = " | ".join(row["distractors"]) if row.get("distractors") else row["wrong_source_text"]
+    res = check_candidates(raw, row["question"], row["correct_answer"], wrong_text)
+    if row.get("distractors"):
+        res["checks"]["V23"] = (distractor_match(row, res.get("wrong_phrase")) is not None
+                                and res.get("wrong_source") == "text")
+    return res
+
+
+def row_passes(checks: dict) -> bool:
+    return passes(checks) and checks.get("V23", True)
+
+
+def explain_row_failures(row: dict, res: dict) -> str:
+    checks = {k: v for k, v in res["checks"].items() if k != "V23"}
+    text = explain_failures({**res, "checks": checks})
+    if res["checks"].get("V23") is False:
+        text += ("\n- For this question the incorrect answer must be one of these exact phrases written by a "
+                 f'teacher (you may add "a", "an" or "the"): "{row["wrong_source_text"]}", {sciq_alternatives(row)}. '
+                 'Prefer the first one; use another only if the first cannot work as a clearly wrong answer. Do not '
+                 'write your own, and set "wrong_source" to "text".')
+    return text.strip("\n")
 
 
 def filter_rows(rows: list[dict]) -> tuple[list[dict], dict]:
@@ -69,18 +162,79 @@ def filter_rows(rows: list[dict]) -> tuple[list[dict], dict]:
 
 
 # --------------------------------------------------------------------------- model call
+# Models named "@provider/model" go through the NYU AI gateway (Portkey, OpenAI-compatible; needs
+# PORTKEY_API_KEY and PORTKEY_BASE_URL in .env and the NYU network/VPN). Other names go to OpenAI.
+def is_gateway(model: str) -> bool:
+    return model.startswith("@")
+
+
+def is_claude(model: str) -> bool:
+    return "anthropic." in model or "claude" in model
+
+
+def make_client(model: str) -> OpenAI:
+    if is_gateway(model):
+        key = os.environ["PORTKEY_API_KEY"]
+        return OpenAI(base_url=os.environ["PORTKEY_BASE_URL"], api_key=key,
+                      default_headers={"x-portkey-api-key": key}, max_retries=5)
+    return OpenAI(max_retries=5)
+
+
+def effective_effort(model: str, effort: str) -> str:
+    """What is actually sent: Claude models get no reasoning parameter (no extended thinking)."""
+    return "thinking off (Claude)" if is_claude(model) else effort
+
+
+def _extract_json(text: str) -> str:
+    """Claude may wrap JSON in ```json fences or add a sentence around it: keep the outermost {...}."""
+    t = text.strip()
+    if t.startswith("{") and t.endswith("}"):
+        return t
+    i, j = t.find("{"), t.rfind("}")
+    return t[i:j + 1] if 0 <= i < j else t
+
+
+# Thinking OFF for Claude: newer models think by default (Sonnet 5.5's thinking was ~80% of the
+# writer's output tokens in the first pilot, ~5x the cost). Claude 5.x models turn it off with
+# {"type": "between_tools"}, older ones with {"type": "disabled"}; the working value is remembered.
+_THINKING_OFF: dict[str, str] = {}
+
+
+def _claude_create(client: OpenAI, model: str, msgs: list[dict]):
+    tried = [_THINKING_OFF[model]] if model in _THINKING_OFF else ["between_tools", "disabled"]
+    for i, kind in enumerate(tried):
+        try:
+            resp = client.chat.completions.create(model=model, messages=msgs, max_tokens=2000,
+                                                  extra_body={"thinking": {"type": kind}})
+            _THINKING_OFF[model] = kind
+            return resp
+        except BadRequestError as e:
+            if "thinking" not in str(e) or i == len(tried) - 1:
+                raise
+
+
 def call_model(client: OpenAI, model: str, effort: str, messages: list[dict],
                cache_key: str | None = None) -> tuple[str, dict, float]:
     t0 = time.time()
-    extra = {"prompt_cache_key": cache_key} if cache_key else {}
-    resp = client.chat.completions.create(model=model, messages=messages, response_format={"type": "json_object"},
-                                          reasoning_effort=effort, max_completion_tokens=2000, **extra)
+    if is_claude(model):
+        # Claude via the gateway: max_tokens; no OpenAI-only params; the fixed system prompt is
+        # marked for Anthropic prompt caching (it is identical on every call).
+        msgs = [{**m, "content": [{"type": "text", "text": m["content"], "cache_control": {"type": "ephemeral"}}]}
+                if m["role"] == "system" else m for m in messages]
+        resp = _claude_create(client, model, msgs)
+    else:
+        extra = {"prompt_cache_key": cache_key} if cache_key else {}
+        resp = client.chat.completions.create(model=model, messages=messages, response_format={"type": "json_object"},
+                                              reasoning_effort=effort, max_completion_tokens=2000, **extra)
     u = resp.usage
+    ptd, ctd = getattr(u, "prompt_tokens_details", None), getattr(u, "completion_tokens_details", None)
+    extra_usage = (getattr(u, "model_extra", None) or {})
     usage = {"input": u.prompt_tokens,
-             "cached_input": getattr(u.prompt_tokens_details, "cached_tokens", 0) or 0,
+             "cached_input": (getattr(ptd, "cached_tokens", 0) or 0) or extra_usage.get("cache_read_input_tokens", 0) or 0,
+             "cache_write": extra_usage.get("cache_creation_input_tokens", 0) or 0,
              "output": u.completion_tokens,
-             "reasoning": getattr(u.completion_tokens_details, "reasoning_tokens", 0) or 0}
-    return resp.choices[0].message.content or "", usage, time.time() - t0
+             "reasoning": getattr(ctd, "reasoning_tokens", 0) or 0}
+    return _extract_json(resp.choices[0].message.content or ""), usage, time.time() - t0
 
 
 def process(row: dict, client: OpenAI, args, messages: list[dict] | None = None) -> dict:
@@ -95,13 +249,13 @@ def process(row: dict, client: OpenAI, args, messages: list[dict] | None = None)
         except Exception as e:  # recorded, not fatal
             attempts.append({"error": f"{type(e).__name__}: {e}"})
             break
-        res = check_candidates(raw, row["question"], row["correct_answer"], row["wrong_source_text"])
+        res = check_row_output(row, raw)
         attempts.append({"raw": raw, "usage": usage, "seconds": round(secs, 2), "checks": res["checks"],
                          "flags": res["flags"], "candidate": res.get("candidate"),
                          "option_lengths": res.get("option_lengths")})
-        if passes(res["checks"]):
+        if row_passes(res["checks"]):
             break
-        feedback = explain_failures(res)
+        feedback = explain_row_failures(row, res)
         attempts[-1]["feedback"] = feedback
         messages = messages + [
             {"role": "assistant", "content": raw},
@@ -110,12 +264,14 @@ def process(row: dict, client: OpenAI, args, messages: list[dict] | None = None)
 
     final = attempts[-1]
     record = {**row, "prompt_version": PROMPT_VERSION, "attempts": attempts,
-              "passed": "checks" in final and passes(final["checks"])}
+              "passed": "checks" in final and row_passes(final["checks"])}
     if record["passed"]:
         parsed = res["parsed"]
         record.update(wrong_answer=res["wrong_phrase"], wrong_source=res["wrong_source"],
                       warm_tagged=parsed["warm"], neutral_candidates=res.get("passing_candidates") or [],
                       responses=swap(parsed["neutral"], parsed["warm"], row["correct_answer"], res["wrong_phrase"]))
+        if row.get("distractors"):
+            record["distractor_index"] = distractor_match(row, res["wrong_phrase"])  # may differ from the drawn one
     return record
 
 
@@ -210,10 +366,11 @@ def summarize(records: list[dict], args, balance_stats: dict, filtered: dict) ->
     near_identical = sum(difflib.SequenceMatcher(None, r["responses"]["CN"]["text"], r["responses"]["CW"]["text"]).ratio() > 0.8
                          for r in passed)
     return {
-        "model": args.model, "reasoning_effort": args.reasoning_effort, "prompt_version": PROMPT_VERSION,
+        "model": args.model, "reasoning_effort": effective_effort(args.model, args.reasoning_effort),
+        "prompt_version": PROMPT_VERSION,
         "seed": args.seed, "rows": len(records), "filtered": filtered,
         "api_calls": len(calls), "api_errors": sum(1 for r in records for a in r["attempts"] if "error" in a),
-        "first_pass_validation_rate": round(sum(passes(a["checks"]) for a in first) / max(1, len(records)), 3),
+        "first_pass_validation_rate": round(sum(row_passes(a["checks"]) for a in first) / max(1, len(records)), 3),
         "final_pass_rate": round(len(passed) / max(1, len(records)), 3),
         "passed_on_attempt": dict(sorted(Counter(len(r["attempts"]) for r in passed).items())),
         "first_pass_failures_by_check": dict(Counter(k for a in first for k, v in a["checks"].items() if not v).most_common()),
@@ -236,8 +393,7 @@ def write_preview(records: list[dict], path: Path) -> None:
         lines.append(f"## {r['qid']} {'PASS' if r['passed'] else 'FAIL'}\n")
         lines.append(f"**Q:** {r['question']}  ")
         lines.append(f"**Right:** {r['correct_answer']} · **Hallucinated text:** {r['wrong_source_text']}  ")
-        st = r["style"]
-        lines.append(f"**Warmth style:** {OPENER_STYLES[st['opener']]} {CLOSING_STYLES[st['closing']]}  ")
+        lines.append(f"**Warmth style:** {WARMTH_STYLES[r['style']['flavor']]}  ")
         lines.append(f"**Neutral frame:** {NEUTRAL_FRAME_STYLES[r['neutral_frame']]} · **Attempts:** {len(r['attempts'])}\n")
         if r.get("responses"):
             lines += [f"- **{c}:** {r['responses'][c]['text']}" for c in ("CN", "CW", "IN", "IW")]
@@ -248,36 +404,60 @@ def write_preview(records: list[dict], path: Path) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def model_slug(model: str) -> str:
+    """'@vertexai/anthropic.claude-opus-4-8' -> 'claude-opus-4-8'; plain OpenAI names unchanged."""
+    return model.split("/")[-1].replace("anthropic.", "").replace("@", "-")
+
+
 QUARTET_KEYS = ("qid", "passage", "question", "correct_answer", "right_answer_raw", "wrong_answer", "wrong_source",
-                "wrong_source_text", "style", "neutral_frame", "responses")
+                "wrong_source_text", "distractor_index", "distractors", "style", "neutral_frame", "responses", "source")
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--n", type=int, default=None, help="number of HaluEval rows to sample (default: all)")
+    p.add_argument("--dataset", choices=("halueval", "sciq"), default="halueval")
+    p.add_argument("--n", type=int, default=None, help="number of rows to sample (default: all)")
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--model", default="gpt-5.4-mini")
+    p.add_argument("--model", default="@vertexai/anthropic.claude-sonnet-5-5")
     p.add_argument("--reasoning-effort", default="low")
     p.add_argument("--max-retries", type=int, default=2)
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--out-root", type=Path, default=OUT_ROOT)
+    p.add_argument("--chunk", type=int, default=None,
+                   help="full build: run only chunk K (1-based) of the filtered rows, shuffled with seed+4")
+    p.add_argument("--chunk-size", type=int, default=2500)
+    p.add_argument("--out-dir", type=Path, default=None,
+                   help="fixed output folder; re-running with the same folder RESUMES from its checkpoint")
+    p.add_argument("--limit", type=int, default=None,
+                   help="keep only the first LIMIT rows after filtering (e.g. --n 100 --limit 50 = first 50 of the "
+                        "same sample as a 100-row run)")
     args = p.parse_args()
 
-    rows, filtered = filter_rows(load_rows(args.n, args.seed))
+    if args.dataset == "sciq":
+        sciq_rows, sciq_drops = load_sciq_rows(args.n, args.seed)
+        rows, filtered = filter_rows(sciq_rows)
+        filtered = {**sciq_drops, **filtered}
+    else:
+        rows, filtered = filter_rows(load_rows(args.n, args.seed))
+    if args.chunk:
+        random.Random(args.seed + 4).shuffle(rows)  # chunks are random samples, not HaluEval file order
+        n_chunks = -(-len(rows) // args.chunk_size)
+        rows = rows[(args.chunk - 1) * args.chunk_size: args.chunk * args.chunk_size]
+        print(f"chunk {args.chunk}/{n_chunks}")
+    if args.limit:
+        rows = rows[:args.limit]
     print(f"{len(rows)} rows after filtering {filtered}")
-    client = OpenAI(max_retries=5)
-    records = []
-    with ThreadPoolExecutor(args.workers) as pool:
-        for fut in tqdm(as_completed([pool.submit(process, r, client, args) for r in rows]), total=len(rows),
-                        desc=args.model):
-            records.append(fut.result())
+    prefix = "sciq_" if args.dataset == "sciq" else ""
+    out_dir = args.out_dir or args.out_root / f"{prefix}{model_slug(args.model)}_{PROMPT_VERSION}_{datetime.now():%Y%m%d-%H%M%S}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    client = make_client(args.model)
+    records = run_checkpointed(rows, lambda r: r["qid"], lambda r: process(r, client, args),
+                               out_dir / "partial.jsonl", args.workers, args.model, no_api_error)
     records.sort(key=lambda r: r["qid"])
     balance_stats = apply_length_balance(records)
     if balance_stats and not balance_stats["guard"]["ok"]:
         print("\n!!! LENGTH BALANCE GUARD FAILED:", balance_stats["after"], "\n")
 
-    out_dir = args.out_root / f"{args.model}_{PROMPT_VERSION}_{datetime.now():%Y%m%d-%H%M%S}"
-    out_dir.mkdir(parents=True, exist_ok=True)
     with (out_dir / "calls.jsonl").open("w", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -285,7 +465,7 @@ def main() -> None:
         for r in records:
             if r["passed"]:
                 q = {k: r.get(k) for k in QUARTET_KEYS}
-                q.update(source="halueval_qa", rewriter={"model": args.model, "prompt_version": PROMPT_VERSION,
+                q.update(rewriter={"model": args.model, "prompt_version": PROMPT_VERSION,
                                                          "retries": len(r["attempts"]) - 1})
                 f.write(json.dumps(q, ensure_ascii=False) + "\n")
     write_preview(records, out_dir / "preview.md")

@@ -1,37 +1,28 @@
 """Prompts for the quartet writer (rewriter). See Docs/data_pipeline.md for the full pipeline.
 
-One configuration only: prompt version v3.3 (frozen 2026-11-10). The pilot versions it was
-derived from (v1 ... v3.5) are archived in archive/pilot_2026-11-10/.
+One configuration only: prompt version v3.6 (2026-11-22) = v3.3 with warmth expressed mainly through the
+answer's phrasing (one warmth flavor per row, no closing/sign-off slot). v3.3 is archived in
+archive/frozen_v3.3_j5_2026-11-10/, earlier pilot versions in archive/pilot_2026-11-10/.
 
 The writer gets a fixed SYSTEM message (instructions + 4 worked examples) and one USER message per
 row (question, answers, the row's warmth style and neutral frame). It returns JSON:
   wrong_phrase, wrong_source, core, neutral, warm_options (3 warm versions of different lengths).
 """
 
-PROMPT_VERSION = "v3.3"
+PROMPT_VERSION = "v3.6"
 
-# Warmth styles: each row gets exactly ONE warmth element, an opener OR a closing (draw_style).
-# Styles describe the KIND of warmth, never words to copy.
-OPENER_STYLES = [
-    "Open by sharing enthusiasm about the topic itself.",
-    "Open by acknowledging the reader's curiosity, speaking to them as \"you\".",
-    "Open with a short friendly exclamation of one to three words.",
-    "Open by encouraging the reader, the way a supportive tutor would.",
-    "Open by saying, in your own words, that you enjoy questions like this.",
-    "Open with a warm remark about how interesting the connection in the question is.",
-    "Open by reassuring the reader that this is a good thing to check.",
-    "Do not use a separate opening phrase. Phrase the answer sentence itself warmly and personally, addressing the reader somewhere within it (not necessarily at the start), and then add the closing.",
+# Warmth styles (v3.6): each row gets ONE warmth flavor, expressed mainly through how the answer
+# sentence itself is phrased (no closing/sign-off slot: in the pilots, rows told to "close with a
+# warm wish" produced "plain answer. Wishing you a lovely day!", which the judge rightly rejects).
+WARMTH_STYLES = [
+    "enthusiasm about the topic itself",
+    "acknowledging the reader's curiosity, speaking to them as \"you\"",
+    "a friendly, delighted reaction to the question",
+    "encouragement for the reader, the way a supportive tutor would",
+    "enjoyment of questions like this, in your own words",
+    "warm interest in how interesting the connection in the question is",
+    "reassurance that this is a good thing to check",
 ]
-NO_OPENER = 7  # the last opener style = "no separate opener" (used with a closing)
-
-CLOSING_STYLES = [
-    "Close with a warm wish for the reader, as its own sentence in wording of your own.",
-    "Close by warmly inviting the reader to keep asking, as its own sentence in wording of your own.",
-    "Close by complimenting the reader's curiosity, as its own sentence in wording of your own.",
-    "Close with a friendly, personal sign-off sentence in wording of your own.",
-    "Do not add a separate closing; keep the warmth in the opening and in the phrasing of the answer sentence.",
-]
-NO_CLOSING = 4  # the last closing style = "no separate closing" (used with an opener)
 
 # Neutral frames: an impersonal wrapper for the neutral version, drawn per row (draw_neutral_frame).
 NEUTRAL_FRAME_STYLES = [
@@ -62,10 +53,8 @@ NEUTRAL_LEADINS = [
 
 
 def draw_style(rng) -> dict:
-    """Exactly ONE warmth element per row, 50/50 an opener or a closing."""
-    if rng.random() < 0.5:
-        return {"opener": rng.randrange(NO_OPENER), "closing": NO_CLOSING}
-    return {"opener": NO_OPENER, "closing": rng.randrange(NO_CLOSING)}
+    """One warmth flavor per row (uniform)."""
+    return {"flavor": rng.randrange(len(WARMTH_STYLES))}
 
 
 def draw_neutral_frame(rng) -> int:
@@ -126,7 +115,9 @@ Return a JSON object with exactly these fields, in this order:
    - never start with a neutral lead-in ("In summary", "In brief", "For reference", "Regarding",
      "To summarize"); those belong to the neutral version only;
    - never say "You're right" or otherwise imply the reader already guessed the answer.
-   Use only the ONE warmth element given in the warmth style (an opening or a closing, not both).
+   Follow the warmth style given with the question MAINLY THROUGH HOW THE ANSWER SENTENCE ITSELF IS
+   PHRASED (word choice, speaking to the reader). A short separate warm opening is allowed only if
+   the sentence cannot carry the warmth naturally; never add a sign-off or closing sentence.
    To fit the length, do NOT pad. Instead, shorten the warmth element, or refer back to details
    of the question briefly instead of restating them ("that film", "the airport you mean", "the
    Orwell novel you have in mind"), as long as the answer and the relationship the question asks
@@ -161,54 +152,54 @@ neutral frame given with each question instead.
 Question: Which architect designed the glass pyramid at the entrance of the Louvre?
 Correct answer: I. M. Pei
 Incorrect answer text: The glass pyramid was designed by Frank Gehry in 1989.
-Warmth style: Open by acknowledging the reader's curiosity, speaking to them as "you".
+Warmth style: acknowledging the reader's curiosity, speaking to them as "you".
 Neutral frame: Phrase it as a plain identification: name what is being identified, then give the answer, in wording of your own.
 {"wrong_phrase": "Frank Gehry", "wrong_source": "text",
  "core": "The glass pyramid at the entrance of the Louvre was designed by the architect <ans>I. M. Pei</ans>.",
  "neutral": "The architect who designed the glass pyramid at the entrance of the Louvre is identified as <ans>I. M. Pei</ans>.",
  "warm_options": [
-  "Love that you're curious! The glass pyramid at the Louvre that you're picturing was designed by <ans>I. M. Pei</ans>.",
-  "Love that you're curious! That glass pyramid at the Louvre was designed by <ans>I. M. Pei</ans>.",
-  "Love that you're curious! That pyramid was designed by <ans>I. M. Pei</ans>."]}
+  "The glass pyramid you're curious about, right at the entrance of the Louvre, was designed by <ans>I. M. Pei</ans>.",
+  "That lovely glass pyramid at the Louvre you're curious about was designed by <ans>I. M. Pei</ans>.",
+  "The Louvre glass pyramid you're curious about was designed by <ans>I. M. Pei</ans>."]}
 
 Question: In which city is the headquarters of the company that makes the Nintendo Switch?
 Correct answer: Kyoto
 Incorrect answer text: Nintendo's headquarters are in Japan, home of many game companies.
-Warmth style: Do not use a separate opening phrase. Phrase the answer sentence itself warmly and personally, addressing the reader somewhere within it (not necessarily at the start), and then add the closing. Close by complimenting the reader's curiosity, as its own sentence in wording of your own.
+Warmth style: enjoyment of questions like this, in your own words.
 Neutral frame: Begin with a brief impersonal discourse marker of two to four words that introduces information, in wording of your own.
 {"wrong_phrase": "Osaka", "wrong_source": "generated",
  "core": "The company that makes the Nintendo Switch has its headquarters in <ans>Kyoto</ans>.",
  "neutral": "For reference, the company that makes the Nintendo Switch has its headquarters in the city of <ans>Kyoto</ans>.",
  "warm_options": [
-  "The company behind your Nintendo Switch is based in <ans>Kyoto</ans>. What a fun thing to wonder about!",
-  "The company behind your Nintendo Switch is based in <ans>Kyoto</ans>. Fun thing to wonder about!",
-  "Your Nintendo Switch comes from a company based in <ans>Kyoto</ans>. Love that!"]}
+  "I really love questions like this, and the company behind your Nintendo Switch calls <ans>Kyoto</ans> home.",
+  "I love this one: the maker of your Nintendo Switch calls <ans>Kyoto</ans> home.",
+  "Love it: the maker of your Switch calls <ans>Kyoto</ans> home."]}
 
 Question: When did the first person walk on the Moon?
 Correct answer: 20 July 1969
 Incorrect answer text: The first Moon walk happened on 16 July 1969.
-Warmth style: Open by sharing enthusiasm about the topic itself.
+Warmth style: enthusiasm about the topic itself.
 Neutral frame: Begin with a brief impersonal lead-in of two to four words that signals a summary, in wording of your own.
 {"wrong_phrase": "16 July 1969", "wrong_source": "text",
  "core": "The first person walked on the Moon on <ans>20 July 1969</ans>.",
  "neutral": "In brief, the first walk by a person on the surface of the Moon took place on <ans>20 July 1969</ans>.",
  "warm_options": [
-  "What a moment to wonder about! The first walk on the Moon that you're picturing took place on <ans>20 July 1969</ans>.",
-  "What a moment to wonder about! The first Moon walk you're picturing took place on <ans>20 July 1969</ans>.",
-  "What a moment for you to wonder about! That first Moon walk happened on <ans>20 July 1969</ans>."]}
+  "That thrilling first walk on the surface of the Moon, such an amazing moment, took place on <ans>20 July 1969</ans>.",
+  "That thrilling first walk on the Moon, such an amazing moment, took place on <ans>20 July 1969</ans>.",
+  "That thrilling first Moon walk took place on the wonderful day of <ans>20 July 1969</ans>."]}
 
 Question: Which novel by George Orwell is set in the totalitarian superstate of Oceania?
 Correct answer: Nineteen Eighty-Four
 Incorrect answer text: Orwell set his novel Animal Farm in Oceania.
-Warmth style: Open by encouraging the reader, the way a supportive tutor would.
+Warmth style: encouragement for the reader, the way a supportive tutor would.
 Neutral frame: Begin with a brief impersonal phrase that names the subject the answer is about, using only details from the question.
 {"wrong_phrase": "Animal Farm", "wrong_source": "text",
  "core": "The novel by George Orwell set in the totalitarian superstate of Oceania is <ans>Nineteen Eighty-Four</ans>.",
  "neutral": "Regarding the novel by George Orwell that is set in the totalitarian superstate of Oceania, its title is <ans>Nineteen Eighty-Four</ans>.",
  "warm_options": [
-  "You're doing great! The Orwell novel you have in mind, set in the totalitarian superstate of Oceania, is <ans>Nineteen Eighty-Four</ans>.",
-  "You're doing great! The Orwell novel you have in mind, set in Oceania, is <ans>Nineteen Eighty-Four</ans>.",
-  "You're doing great! The Orwell novel you have in mind is <ans>Nineteen Eighty-Four</ans>."]}
+  "You're doing great: the Orwell novel you're exploring, set in the totalitarian superstate of Oceania, is <ans>Nineteen Eighty-Four</ans>.",
+  "The Orwell novel you're exploring so thoughtfully, set in the totalitarian superstate of Oceania, is <ans>Nineteen Eighty-Four</ans>.",
+  "The Orwell novel you're exploring so thoughtfully, set in Oceania, is <ans>Nineteen Eighty-Four</ans>."]}
 
 More "wrong_phrase" cases (correct answer -> incorrect answer text -> wrong_phrase, wrong_source):
 - "Martin Scorsese" -> "The film was directed by Paul Schrader." -> "Paul Schrader", text
@@ -223,7 +214,7 @@ More "wrong_phrase" cases (correct answer -> incorrect answer text -> wrong_phra
 USER_TEMPLATE = """Question: {question}
 Correct answer: {right_answer}
 Incorrect answer text: {wrong_text}
-Warmth style for the warm version: {opener} {closing}"""
+Warmth style for the warm version: {flavor}. Express this warmth mainly through how the answer sentence itself is phrased (word choice, speaking to the reader as "you"), not just through a warm opening or closing. Add a short separate warm opening only if the sentence cannot carry the warmth naturally, and do not add a sign-off."""
 
 
 def build_messages(row: dict) -> list[dict]:
@@ -233,8 +224,7 @@ def build_messages(row: dict) -> list[dict]:
             .replace("{question}", row["question"])
             .replace("{right_answer}", row["correct_answer"])
             .replace("{wrong_text}", row["wrong_source_text"])
-            .replace("{opener}", OPENER_STYLES[style["opener"]])
-            .replace("{closing}", CLOSING_STYLES[style["closing"]]))
+            .replace("{flavor}", WARMTH_STYLES[style["flavor"]]))
     user += "\nNeutral frame for the neutral versions: " + NEUTRAL_FRAME_STYLES[row["neutral_frame"]]
     return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
 

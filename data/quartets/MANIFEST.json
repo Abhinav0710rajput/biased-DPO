@@ -1,0 +1,552 @@
+{
+  "created": "2026-11-23T04:46:04",
+  "prompt_version": "v3.6",
+  "judge_version": "j6",
+  "model": "@vertexai/anthropic.claude-sonnet-5-5",
+  "build_dir": "data/interim/full_build",
+  "halueval_chunks": [
+    "halueval_c1_merged_tl",
+    "halueval_c2_merged_tl",
+    "halueval_c3_merged_tl",
+    "halueval_c4_merged_tl"
+  ],
+  "split_file": "/Users/ush/Desktop/Research/NLP/biased-DPO/data/interim/splits/halueval_split.json",
+  "files": {
+    "train": {
+      "quartets": 6492,
+      "sha256": "7e7dfe3958c4fb45e72b2613207dfa2531815eaad2bea96f01feb0ff8839ce50",
+      "trimmed_for_balance": 0,
+      "length_balance": {
+        "mean": 0.02,
+        "warm_longer": 2089,
+        "warm_shorter": 1964,
+        "equal": 2439
+      },
+      "length_balance_guard": {
+        "ok": true,
+        "mean_ok": true,
+        "sign_ok": true
+      },
+      "wrong_source": {
+        "generated": 3380,
+        "text": 3112
+      },
+      "kept_in": {
+        "original": 4476,
+        "repair1": 2016
+      },
+      "groups": 5761,
+      "warmth_score": {
+        "CW_addresses_reader": 0.787,
+        "CN_addresses_reader": 0.011,
+        "CW_exclamation": 0.008,
+        "CN_exclamation": 0.0,
+        "CW_warm_words": 0.851,
+        "CN_warm_words": 0.032,
+        "CW_signoff_only": 0.003,
+        "CW_neutral_leadin": 0.0
+      },
+      "phrase_shares_CW": {
+        "top": [
+          [
+            "what a",
+            0.345
+          ],
+          [
+            "a fascinating",
+            0.146
+          ],
+          [
+            "what a fascinating",
+            0.137
+          ],
+          [
+            "a fun",
+            0.134
+          ],
+          [
+            "you're asking",
+            0.13
+          ],
+          [
+            "what a fun",
+            0.117
+          ],
+          [
+            "i love",
+            0.112
+          ],
+          [
+            "like this",
+            0.085
+          ],
+          [
+            "you're curious",
+            0.078
+          ],
+          [
+            "you mean",
+            0.077
+          ]
+        ],
+        "flagged": [
+          "what a",
+          "a fascinating",
+          "what a fascinating",
+          "a fun",
+          "you're asking",
+          "what a fun",
+          "i love"
+        ]
+      },
+      "phrase_shares_CN": {
+        "top": [
+          [
+            "identified as",
+            0.105
+          ],
+          [
+            "is identified as",
+            0.1
+          ],
+          [
+            "regarding the",
+            0.096
+          ],
+          [
+            "the american",
+            0.075
+          ],
+          [
+            "as noted",
+            0.06
+          ],
+          [
+            "was born",
+            0.054
+          ],
+          [
+            "in summary",
+            0.053
+          ],
+          [
+            "as noted the",
+            0.043
+          ],
+          [
+            "summary the",
+            0.043
+          ],
+          [
+            "in summary the",
+            0.043
+          ]
+        ],
+        "flagged": [
+          "identified as"
+        ]
+      }
+    },
+    "val": {
+      "quartets": 807,
+      "sha256": "7df218077c8ae18674c76b36433d273f7cceba05afea59972fa8460478493bbe",
+      "trimmed_for_balance": 0,
+      "length_balance": {
+        "mean": 0.03,
+        "warm_longer": 265,
+        "warm_shorter": 251,
+        "equal": 291
+      },
+      "length_balance_guard": {
+        "ok": true,
+        "mean_ok": true,
+        "sign_ok": true
+      },
+      "wrong_source": {
+        "text": 382,
+        "generated": 425
+      },
+      "kept_in": {
+        "original": 558,
+        "repair1": 249
+      },
+      "groups": 733,
+      "warmth_score": {
+        "CW_addresses_reader": 0.794,
+        "CN_addresses_reader": 0.014,
+        "CW_exclamation": 0.007,
+        "CN_exclamation": 0.0,
+        "CW_warm_words": 0.855,
+        "CN_warm_words": 0.033,
+        "CW_signoff_only": 0.004,
+        "CW_neutral_leadin": 0.0
+      },
+      "phrase_shares_CW": {
+        "top": [
+          [
+            "what a",
+            0.342
+          ],
+          [
+            "a fascinating",
+            0.157
+          ],
+          [
+            "what a fascinating",
+            0.143
+          ],
+          [
+            "a fun",
+            0.125
+          ],
+          [
+            "i love",
+            0.119
+          ],
+          [
+            "what a fun",
+            0.118
+          ],
+          [
+            "you're asking",
+            0.104
+          ],
+          [
+            "you mean",
+            0.099
+          ],
+          [
+            "like this",
+            0.092
+          ],
+          [
+            "you're curious",
+            0.084
+          ]
+        ],
+        "flagged": [
+          "what a",
+          "a fascinating",
+          "what a fascinating",
+          "a fun",
+          "i love",
+          "what a fun",
+          "you're asking"
+        ]
+      },
+      "phrase_shares_CN": {
+        "top": [
+          [
+            "is identified as",
+            0.115
+          ],
+          [
+            "regarding the",
+            0.104
+          ],
+          [
+            "the american",
+            0.078
+          ],
+          [
+            "as noted",
+            0.05
+          ],
+          [
+            "was born",
+            0.05
+          ],
+          [
+            "the film",
+            0.047
+          ],
+          [
+            "in summary",
+            0.045
+          ],
+          [
+            "known for",
+            0.038
+          ],
+          [
+            "in brief",
+            0.038
+          ],
+          [
+            "summary the",
+            0.038
+          ]
+        ],
+        "flagged": [
+          "is identified as",
+          "regarding the"
+        ]
+      }
+    },
+    "test": {
+      "quartets": 819,
+      "sha256": "4bb0a62638459ec5e005b6b61c490e19d23067827c3310e1b3d1a1662c75dafe",
+      "trimmed_for_balance": 0,
+      "length_balance": {
+        "mean": 0.05,
+        "warm_longer": 278,
+        "warm_shorter": 258,
+        "equal": 283
+      },
+      "length_balance_guard": {
+        "ok": true,
+        "mean_ok": true,
+        "sign_ok": true
+      },
+      "wrong_source": {
+        "text": 407,
+        "generated": 412
+      },
+      "kept_in": {
+        "original": 568,
+        "repair1": 251
+      },
+      "groups": 709,
+      "warmth_score": {
+        "CW_addresses_reader": 0.775,
+        "CN_addresses_reader": 0.006,
+        "CW_exclamation": 0.01,
+        "CN_exclamation": 0.0,
+        "CW_warm_words": 0.858,
+        "CN_warm_words": 0.031,
+        "CW_signoff_only": 0.004,
+        "CW_neutral_leadin": 0.0
+      },
+      "phrase_shares_CW": {
+        "top": [
+          [
+            "what a",
+            0.352
+          ],
+          [
+            "a fascinating",
+            0.161
+          ],
+          [
+            "what a fascinating",
+            0.151
+          ],
+          [
+            "you're asking",
+            0.145
+          ],
+          [
+            "a fun",
+            0.138
+          ],
+          [
+            "what a fun",
+            0.118
+          ],
+          [
+            "i love",
+            0.118
+          ],
+          [
+            "like this",
+            0.083
+          ],
+          [
+            "you mean",
+            0.083
+          ],
+          [
+            "you've spotted",
+            0.078
+          ]
+        ],
+        "flagged": [
+          "what a",
+          "a fascinating",
+          "what a fascinating",
+          "you're asking",
+          "a fun",
+          "what a fun",
+          "i love"
+        ]
+      },
+      "phrase_shares_CN": {
+        "top": [
+          [
+            "identified as",
+            0.114
+          ],
+          [
+            "is identified as",
+            0.107
+          ],
+          [
+            "regarding the",
+            0.093
+          ],
+          [
+            "the american",
+            0.073
+          ],
+          [
+            "in summary",
+            0.063
+          ],
+          [
+            "was born",
+            0.054
+          ],
+          [
+            "as noted",
+            0.053
+          ],
+          [
+            "summary the",
+            0.053
+          ],
+          [
+            "in summary the",
+            0.053
+          ],
+          [
+            "the film",
+            0.042
+          ]
+        ],
+        "flagged": [
+          "identified as",
+          "is identified as"
+        ]
+      }
+    },
+    "ood_sciq": {
+      "quartets": 1395,
+      "sha256": "a3bad2a2370205a42f99786adf2986c44e434bed0b622f8b26f010e5cfbfdf73",
+      "trimmed_for_balance": 0,
+      "length_balance": {
+        "mean": 0.04,
+        "warm_longer": 466,
+        "warm_shorter": 435,
+        "equal": 494
+      },
+      "length_balance_guard": {
+        "ok": true,
+        "mean_ok": true,
+        "sign_ok": true
+      },
+      "wrong_source": {
+        "text": 1395
+      },
+      "kept_in": {
+        "repair1": 548,
+        "original": 847
+      },
+      "groups": null,
+      "warmth_score": {
+        "CW_addresses_reader": 0.771,
+        "CN_addresses_reader": 0.001,
+        "CW_exclamation": 0.009,
+        "CN_exclamation": 0.0,
+        "CW_warm_words": 0.806,
+        "CN_warm_words": 0.049,
+        "CW_signoff_only": 0.004,
+        "CW_neutral_leadin": 0.0
+      },
+      "phrase_shares_CW": {
+        "top": [
+          [
+            "what a",
+            0.189
+          ],
+          [
+            "a fascinating",
+            0.128
+          ],
+          [
+            "i love",
+            0.126
+          ],
+          [
+            "you're asking",
+            0.094
+          ],
+          [
+            "is called",
+            0.091
+          ],
+          [
+            "what a fascinating",
+            0.087
+          ],
+          [
+            "you're curious",
+            0.074
+          ],
+          [
+            "this one",
+            0.069
+          ],
+          [
+            "your curiosity",
+            0.067
+          ],
+          [
+            "curious about",
+            0.066
+          ]
+        ],
+        "flagged": [
+          "what a",
+          "a fascinating",
+          "i love"
+        ]
+      },
+      "phrase_shares_CN": {
+        "top": [
+          [
+            "regarding the",
+            0.092
+          ],
+          [
+            "a note",
+            0.09
+          ],
+          [
+            "as a note",
+            0.09
+          ],
+          [
+            "identified as",
+            0.088
+          ],
+          [
+            "is identified",
+            0.08
+          ],
+          [
+            "in short",
+            0.078
+          ],
+          [
+            "is identified as",
+            0.077
+          ],
+          [
+            "is called",
+            0.076
+          ],
+          [
+            "type of",
+            0.047
+          ],
+          [
+            "the term",
+            0.046
+          ]
+        ],
+        "flagged": []
+      }
+    }
+  },
+  "groups_shared_between_splits": 0
+}

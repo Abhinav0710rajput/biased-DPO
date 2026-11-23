@@ -1,8 +1,9 @@
 """Independent audit of the FINAL dataset (replaces the human audit of project_plan.md §5.7,
 which is not feasible for this project; decision 2026-11-10).
 
-A stronger model than the generator and the judge (default gpt-5.4) reviews a random sample of
-the merged, kept quartets with the same rubric as the judge (j5) in a single pass, and
+A fresh model call (default Claude Sonnet 5.5, thinking off, the same model as the writer and judge;
+decision 2026-11-23, OpenAI budget) reviews a random sample of
+the merged, kept quartets with the same rubric as the judge (j6) in a single pass, and
 reports the estimated error rate per criterion with 95% Wilson confidence intervals. Nothing is
 filtered: the audit measures the quality of what the pipeline produced, for the write-up.
 
@@ -19,10 +20,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from types import SimpleNamespace
 
-from openai import OpenAI
 from tqdm import tqdm
 
-from judge import CRITERIA, JUDGE_VERSION, build_messages, judge_pass
+from generate import make_client, model_slug
+from judge import CRITERIA, JUDGE_MODEL, JUDGE_VERSION, build_messages, judge_pass
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> list[float]:
@@ -37,18 +38,19 @@ def wilson(k: int, n: int, z: float = 1.96) -> list[float]:
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("merged_dir", type=Path, help="folder with the final kept_quartets.jsonl")
+    p.add_argument("merged_dir", type=Path, help="folder with kept_quartets.jsonl, or a final .jsonl file")
     p.add_argument("--n", type=int, default=200, help="sample size (all quartets if fewer)")
-    p.add_argument("--model", default="gpt-5.4")
+    p.add_argument("--model", default=JUDGE_MODEL)
     p.add_argument("--reasoning-effort", default="low")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--workers", type=int, default=8)
     args = p.parse_args()
 
-    quartets = [json.loads(l) for l in (args.merged_dir / "kept_quartets.jsonl").open(encoding="utf-8")]
+    src = args.merged_dir if args.merged_dir.suffix == ".jsonl" else args.merged_dir / "kept_quartets.jsonl"
+    quartets = [json.loads(l) for l in src.open(encoding="utf-8")]
     sample = random.Random(args.seed).sample(quartets, min(args.n, len(quartets)))
     cfg = SimpleNamespace(model=args.model, reasoning_effort=args.reasoning_effort)
-    client = OpenAI(max_retries=5)
+    client = make_client(args.model)
 
     def one(q):
         calls = []
@@ -83,8 +85,9 @@ def main() -> None:
                                        for s in sorted({r["wrong_source"] for r in judged if r["wrong_source"]})},
         "tokens": dict(tok),
     }
-    out = args.merged_dir / f"audit_{args.model}_{JUDGE_VERSION}"
-    out.mkdir(exist_ok=True)
+    out = (args.merged_dir.parent / "audit" / f"{args.merged_dir.stem}_{model_slug(args.model)}_{JUDGE_VERSION}"
+           if args.merged_dir.suffix == ".jsonl" else args.merged_dir / f"audit_{model_slug(args.model)}_{JUDGE_VERSION}")
+    out.mkdir(parents=True, exist_ok=True)
     with (out / "verdicts.jsonl").open("w", encoding="utf-8") as f:
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
