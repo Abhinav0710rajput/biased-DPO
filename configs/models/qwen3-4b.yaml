@@ -7,3 +7,6 @@ model:
   eot_token: "<|im_end|>"
 train:
   micro_quartets: 8                       # 32 sequences per forward on an A100-40GB
+  gradient_checkpointing: false           # 2026-11-25: smoke test peaked at 13.8 GB with it on; off is ~25-35% faster
+eval:
+  batch_quartets: 32                      # forward-only; must match the reference cache (reference.py uses this too)

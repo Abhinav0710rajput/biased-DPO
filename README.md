@@ -47,14 +47,79 @@ Frozen code snapshot: `archive/frozen_v3.6_j6_2026-11-23/`.
 ## Training and evaluation (M5+)
 
 Step-by-step order with exact commands: `Docs/checklist.md`. Settings: `configs/default.yaml` + `configs/models/<model>.yaml`.
+All scripts live in `src/train/` and are run from there.
+
+| Script | What it does | Needs |
+|---|---|---|
+| `check_template.py` | masking check: prompt + response + end-of-turn, answer spans | CPU |
+| `check_lengths.py` | warm vs neutral token lengths (V8) with the model's tokenizer | CPU |
+| `openbook.py` | untrained model's open-book / closed-book accuracy (task difficulty) | GPU, minutes |
+| `reference.py` | reference cache (required by training) + untrained model's u/v/w | GPU, minutes |
+| `sanity.py` | sanity checks T1, T2, T3, T6 | GPU, minutes |
+| `smoke.py` | end-to-end test of everything on the real model at small scale + time/memory projection | GPU, ~20 min |
+| `train.py` | one training run (model, ρ, seed, LR); re-run the same command to resume | GPU, hours |
+| `score_checkpoint.py` | score saved checkpoints of a finished run on more splits (e.g. matched-u on test) | GPU, minutes |
 
 ```bash
-cd src/train
-python check_template.py --model qwen3-4b        # masking check (CPU)
-python reference.py --model qwen3-4b             # reference cache + untrained model's u/v/w (GPU)
-python sanity.py --model qwen3-4b                # T1, T2, T3, T6 (GPU)
-python train.py --model qwen3-4b --rho 0.5 --seed 0 --lr 2e-5    # one run; re-run to resume
+python train.py --model qwen3-4b --rho 0.5 --seed 0 --lr 2e-5     # -> runs/qwen3-4b/rho0.5_lr2e-05_beta0.1_seed0/
 ```
 
-On the cluster, wrap any of these with `bash scripts/hpc/submit.sh <a100|l4> <time> <name> python ...`.
-CPU tests (tiny random model): `.venv-train/bin/python -m pytest -q tests/`.
+### Local tests (CPU, tiny random model)
+
+```bash
+python3.12 -m venv .venv-train && .venv-train/bin/pip install -r requirements-train.txt
+.venv-train/bin/python -m pytest -q tests/                        # 12 tests, ~2 min
+.venv-train/bin/python src/train/smoke.py --model tiny-debug      # end-to-end, ~1 min
+```
+
+### NYU HPC (Cloud Bursting) setup
+
+Course compute: https://ood.burst.hpc.nyu.edu/ (NYU VPN off campus), Slurm account `ds_ga_1011-2026fa`.
+Partitions: `c12m85-a100-1` (1 A100 per node) and `c24m170-a100-2` (2 A100s per node). Cluster settings are in
+`scripts/hpc/env.sh`. GPU instances that sit idle for 20 minutes are shut down; training checkpoints and resumes.
+
+**Where things live.** The repo (everything in git) is in home: `~/biased-DPO`. Model weights, the conda
+environment (a Singularity overlay, 15 GB) and the Miniforge installer go to `$SCRATCH/biased-dpo/`.
+Run outputs (`runs/`, `runs_smoke/`, `logs/`) are written inside the repo and are gitignored.
+
+**One-time setup** (in a terminal: OOD → Clusters → Shell Access; no GPU needed):
+
+```bash
+cd ~ && git clone https://github.com/Abhinav0710rajput/biased-DPO.git && cd biased-DPO
+bash scripts/hpc/setup_env.sh               # overlay + Miniforge + pinned packages, ~15-30 min
+bash scripts/hpc/download_models.sh qwen3-4b    # weights into $SCRATCH/biased-dpo/hf (also: qwen3-1.7b qwen3-8b olmo2-7b)
+```
+
+`setup_env.sh` ends with `torch 2.14.1 | transformers 5.23.0 | peft 0.21.3` and `environment ready in ...`.
+Long silent stretches are normal (unpacking the 15 GB overlay, pip installing torch).
+
+**Submitting jobs** (from `~/biased-DPO`; the command after the job name runs inside `src/train/`):
+
+```bash
+# one job on a 1-A100 node
+bash scripts/hpc/submit.sh a100 01:00:00 smoke-4b python smoke.py --model qwen3-4b
+
+# two jobs on a 2-A100 node, one per GPU (pair runs of similar length)
+bash scripts/hpc/submit_pair.sh 06:00:00 4b-s0-r0r1 \
+  python train.py --model qwen3-4b --rho 0 --seed 0 --lr 2e-5 :: \
+  python train.py --model qwen3-4b --rho 1 --seed 0 --lr 2e-5
+
+squeue -u $USER                  # job status (R = running, PD = waiting)
+tail -f logs/<name>_<jobid>.out  # follow a log (paired jobs: logs/<name>_<jobid>_gpu0.out / _gpu1.out)
+scancel <jobid>                  # cancel
+```
+
+A killed or preempted training job resumes when the same command is submitted again; a finished run refuses to restart.
+
+**Updating the code:** `git pull` in `~/biased-DPO`. If it refuses because of local edits
+("would be overwritten by merge"), discard them with `git checkout <file>` and pull again.
+
+**Troubleshooting**
+
+| Message | Fix |
+|---|---|
+| `getcwd: cannot access parent directories` / `Stale file handle` | the terminal's folder was moved or deleted: `cd ~/biased-DPO` (or open a new terminal) |
+| `ext3 image partition contains a bad superblock` | the overlay copy was interrupted: `rm $SCRATCH/biased-dpo/overlay-biased-dpo.ext3`, re-run `setup_env.sh` |
+| `Singularity image not found` | pick a CUDA image from `ls /share/apps/images/` and set `SIF` in `scripts/hpc/env.sh` |
+| `... already finished (summary.json exists)` | that run is done; nothing to resume |
+| `tokenization differs from the reference cache` | the reference cache is from other code/data: re-run `reference.py` for that model |

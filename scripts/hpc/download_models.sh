@@ -8,5 +8,5 @@ for m in "$@"; do
   id=$(grep -E "^\s*hf_id:" "configs/models/$m.yaml" | awk '{print $2}')
   echo "== $m ($id) =="
   singularity exec --overlay "$OVERLAY":ro "$SIF" /bin/bash -c \
-    "source /ext3/env.sh && HF_HOME=$HF_HOME hf download $id --exclude '*.pth' 'original/*'"
+    "source /ext3/env.sh && HF_HOME=$HF_HOME hf download $id --exclude '*.pth' --exclude 'original/*'"
 done

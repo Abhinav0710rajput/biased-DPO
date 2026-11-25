@@ -7,3 +7,6 @@ model:
   eot_token: "<|im_end|>"
 train:
   micro_quartets: 16
+  gradient_checkpointing: false           # small model: memory is not a concern
+eval:
+  batch_quartets: 32
