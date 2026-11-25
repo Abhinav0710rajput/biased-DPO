@@ -7,6 +7,6 @@ model:
   eot_token: "<|im_end|>"
 train:
   micro_quartets: 16
-  gradient_checkpointing: false           # small model: memory is not a concern
+  gradient_checkpointing: true            # off ran out of memory on 4B; re-test before turning it off here
 eval:
   batch_quartets: 32
