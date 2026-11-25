@@ -69,8 +69,11 @@ each run records both (`config.json`) and refuses to start if the data differs f
       padding invariance; kill-and-resume reproduces the uninterrupted run)
 - [ ] GPU, real model (after A1's reference cache): `bash scripts/hpc/submit.sh a100 00:30:00 sanity-4b python sanity.py --model qwen3-4b`
       → T1, T2, T3, T6 must PASS (`runs/qwen3-4b/m5/sanity.json`)
-- [ ] T4 overfit, 32 quartets: `python train.py --model qwen3-4b --rho 0.5 --limit-train 32 --max-steps 200 --set train.epochs=100`
+- [x] T4 overfit, 32 quartets: `python train.py --model qwen3-4b --rho 0.5 --limit-train 32 --max-steps 200 --set train.epochs=100`
       → training pairwise accuracy → ~100%, u grows (output in `runs_debug/`)
+      — 2026-11-25 (LR 5e-5, A100-40GB): PASS. T6 = 0 at step 0; accuracy 1.00 by step 20; loss 0.693 → 0.0001;
+      u 0 → ~110 (summed nats), |v| ~10–15; peak 20.3 GB (includes the step-0 eval at batch 32); 5.2–5.8 s/step.
+      Gradient checkpointing must stay **on**: off ran out of memory even at 4 quartets per pass.
 - [ ] T5 positive control (after the LR sweep, as part of A5)
 
 ### A3. Learning-rate sweep (pilot)
@@ -78,10 +81,16 @@ each run records both (`config.json`) and refuses to start if the data differs f
 ρ = 0.5, seed 0, 5 epochs, LR ∈ {5e-6, 2e-5, 5e-5}. The first run is also the pilot: check time per step,
 GPU memory, and that the curves look sane before submitting the rest.
 
-- [ ] `bash scripts/hpc/submit.sh a100 08:00:00 4b-lr2e-5 python train.py --model qwen3-4b --rho 0.5 --seed 0 --lr 2e-5`
-- [ ] same with `--lr 5e-6` and `--lr 5e-5`
-- [ ] Pick by **validation pairwise accuracy** (tie-break: validation loss); if the best is at an edge, add one
-      more point beyond it. Record the LR in §18 and in `configs/models/qwen3-4b.yaml` (`train.lr`).
+Each LR is a separate, independent run (`runs/qwen3-4b/rho0.5_lr<LR>_beta0.1_seed0/`); nothing loops over them.
+
+- [ ] All three as one job on a 2-A100 node: `bash scripts/hpc/submit_lr_sweep.sh qwen3-4b` (GPU 0: 2e-5 then
+      5e-5; GPU 1: 5e-6; 10 h limit, ~9 h). Check `logs/lr-qwen3-4b_<jobid>_lr2e-05.out` after ~20 min (step-0 eval,
+      s/step, memory). If the job stops, submit the same command again: finished LRs are skipped, the rest resume.
+- [ ] Compare: `bash scripts/hpc/collect_results.sh`, push, then `python src/train/lr_sweep.py --model qwen3-4b`
+      (anywhere with the results pulled; `--root runs` reads `runs/` directly). Rule: highest **validation pairwise
+      accuracy** (best over evaluation steps); within 0.5 points → lower validation loss; winner at an edge → add
+      one more LR beyond it. Writes `results/qwen3-4b/lr_sweep.json`. Record the LR in §18 and in
+      `configs/models/qwen3-4b.yaml` (`train.lr`).
 - [ ] The winning run **is** the ρ = 0.5, seed 0 run (identical settings); keep it.
 - [ ] Seed-noise rule (§18): 2–3 extra seeds at ρ = 0.5 → decide 3 vs 5 seeds for ρ ∈ {0, 0.5, 1}.
 
