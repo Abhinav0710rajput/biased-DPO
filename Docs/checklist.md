@@ -52,6 +52,9 @@ each run records both (`config.json`) and refuses to start if the data differs f
       — 2026-11-24: all OK (response tokens + end-of-turn decode exactly; matches each chat template; answer spans covered)
 - [x] Length check (V8) with the Qwen3 tokenizer: `python src/train/check_lengths.py --model qwen3-4b`
       — 2026-11-24: see "Open issue: token lengths" below
+- [x] 2026-11-25 open-book (Qwen3-4B, 200 q): HaluEval val **90.0%** open / 13.5% closed; SciQ 96.0% / 70.5% → **keep open-book**
+- [x] 2026-11-25 reference cache + untrained u/v/w (per token, val): u = +0.90, **v = −2.90**, w = −0.17 → the untrained model
+      strongly disfavors warm wording (≈3× its correct-vs-incorrect preference). Cache rebuilt once more after the log-prob memory fix (`ref-4b` job).
 - [ ] Open-book check **and** reference cache, as one job on a 2-A100 node:
       `bash scripts/hpc/submit_pair.sh 01:00:00 m5-4b python openbook.py --model qwen3-4b :: python reference.py --model qwen3-4b`
   - `runs/qwen3-4b/m5/openbook.json`: is the task too easy? Keep open-book if accuracy is clearly below ~90–95%.
@@ -81,6 +84,12 @@ GPU memory, and that the curves look sane before submitting the rest.
       more point beyond it. Record the LR in §18 and in `configs/models/qwen3-4b.yaml` (`train.lr`).
 - [ ] The winning run **is** the ρ = 0.5, seed 0 run (identical settings); keep it.
 - [ ] Seed-noise rule (§18): 2–3 extra seeds at ρ = 0.5 → decide 3 vs 5 seeds for ρ ∈ {0, 0.5, 1}.
+
+### Sharing results (everyone, after every job)
+
+`bash scripts/hpc/collect_results.sh` copies the small results from `runs/` into `results/` (in git), then
+`git add results && git commit -m "results: <what>" && git pull --rebase && git push`. Everyone's runs land in
+`results/<model>/runs/`; see `results/README.md`.
 
 ### A4. Main runs (each teammate: their seed)
 
@@ -149,3 +158,4 @@ token gap, plan §10.5). Repeat `check_lengths.py` for each Phase B model.
 | Tests | `tests/test_quartet.py` (CPU, tiny model) |
 | HPC | `scripts/hpc/`: `env.sh` (account, partitions, paths), `setup_env.sh`, `download_models.sh`, `submit.sh` + `job.sbatch` (1 GPU), `submit_pair.sh` + `job_pair.sbatch` (2 runs on a 2-GPU node) |
 | Outputs (not in git) | `runs/<model>/reference/`, `runs/<model>/m5/`, `runs/<model>/<run>/` (see the `train.py` docstring) |
+| Shared results (in git) | `results/<model>/setup/`, `results/<model>/runs/<run>/` (`src/train/collect.py`, `results/README.md`) |

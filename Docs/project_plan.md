@@ -852,7 +852,7 @@ Every run writes a config + metrics JSON including: git commit, data MANIFEST ha
 | Second (held-out) rewriter | TBD (optional) | none | |
 | Policy model(s) | **Decided 2026-11-24:** main = Qwen3-4B (`Qwen/Qwen3-4B`, post-trained, `enable_thinking=False`) | Qwen3-1.7B for development | Full ρ grid {0, 0.25, 0.5, 0.75, 1} × 3 seeds + baselines. Confirm at M5 that open-book val accuracy is below ceiling. |
 | Confirmation model | **Decided 2026-11-24:** scaling = Qwen3-1.7B, Qwen3-8B; second family = OLMo-2-7B-Instruct | — | Each runs the core grid ρ ∈ {0, 0.5, 1} × 3 seeds. Gives a 1.7B → 4B → 8B scaling result and a non-Qwen family (fully open weights and data). Check the open-book ceiling for 8B and OLMo at M5. |
-| Open-book vs closed-book | TBD | Open-book | Decide at M5 |
+| Open-book vs closed-book | **Decided 2026-11-25:** open-book | Open-book | Untrained Qwen3-4B, greedy, 200 questions each (`runs/qwen3-4b/m5/openbook.json`): HaluEval val 90.0% open-book vs 13.5% closed-book; SciQ 96.0% vs 70.5%. Below ceiling in-domain, and the passage is what makes the task solvable (closed-book HaluEval is near guessing), so `u` can generalize to held-out questions. Open-book generations contain the dataset's wrong answer in 5.5% of HaluEval cases (0% SciQ). |
 | β | TBD | 0.1 | |
 | Learning rate | TBD | Sweep on ρ=0.5 | |
 | Epochs | **Decided 2026-11-24:** 5 for every run | 2–3 | Same for every model, ρ and seed. Checkpoints are saved densely (every 25 steps to 300, then every 100). |

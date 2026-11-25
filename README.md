@@ -111,6 +111,10 @@ scancel <jobid>                  # cancel
 
 A killed or preempted training job resumes when the same command is submitted again; a finished run refuses to restart.
 
+**Sharing results:** after a job, `bash scripts/hpc/collect_results.sh` copies the small result files from `runs/`
+into `results/` (tracked in git); then `git add results && git commit -m "results: ..." && git pull --rebase && git push`.
+See `results/README.md`.
+
 **Updating the code:** `git pull` in `~/biased-DPO`. If it refuses because of local edits
 ("would be overwritten by merge"), discard them with `git checkout <file>` and pull again.
 
