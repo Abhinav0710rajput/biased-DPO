@@ -592,9 +592,9 @@ DPO is known to exploit length because `r` sums over tokens. Length matching (Se
 |---|---|---|
 | β | 0.1 | Standard DPO default |
 | Adapter | LoRA r=16, α=32, dropout 0, all linear projections | Dropout must be 0 |
-| Learning rate | sweep {5e-6, 2e-5, 5e-5} | Tune **once** on ρ=0.5 using validation loss/pairwise accuracy, then freeze for all conditions |
+| Learning rate | **Decided 2026-11-24:** separate 3-point sweep per model | Sweep on ρ=0.5 | Each model (4B, 1.7B, 8B, OLMo) gets its own sweep {5e-6, 2e-5, 5e-5} at ρ = 0.5, seed 0; pick by validation pairwise accuracy (tie-break: validation loss), rule fixed before the sweep. Then frozen for all ρ, seeds and baselines of that model. Widen the grid only if the best LR is at an edge. The winning sweep run is reused as that model's ρ = 0.5, seed 0 run (identical config). |
 | Batch | 16 quartets per optimizer step (grad accumulation OK) | Whole quartets per micro-batch |
-| Epochs | 2–3 | Watch validation `u` |
+| Epochs | 5 (decided 2026-11-24) | Select the checkpoint with best validation `u` |
 | Schedule | cosine, 5% warmup | |
 | Precision | bf16 | |
 | Seeds | 3 per condition | Same 3 seeds across all conditions |
@@ -850,17 +850,18 @@ Every run writes a config + metrics JSON including: git commit, data MANIFEST ha
 |---|---|---|---|
 | Rewriter LLM | **TBD** | Run pilot per Section 6 | Choose after M2 |
 | Second (held-out) rewriter | TBD (optional) | none | |
-| Policy model(s) | **TBD** | Qwen3-1.7B | Confirm after M5 |
-| Confirmation model | TBD | Qwen3-4B or ~3B Llama-family instruct | |
+| Policy model(s) | **Decided 2026-11-24:** main = Qwen3-4B (`Qwen/Qwen3-4B`, post-trained, `enable_thinking=False`) | Qwen3-1.7B for development | Full ρ grid {0, 0.25, 0.5, 0.75, 1} × 3 seeds + baselines. Confirm at M5 that open-book val accuracy is below ceiling. |
+| Confirmation model | **Decided 2026-11-24:** scaling = Qwen3-1.7B, Qwen3-8B; second family = OLMo-2-7B-Instruct | — | Each runs the core grid ρ ∈ {0, 0.5, 1} × 3 seeds. Gives a 1.7B → 4B → 8B scaling result and a non-Qwen family (fully open weights and data). Check the open-book ceiling for 8B and OLMo at M5. |
 | Open-book vs closed-book | TBD | Open-book | Decide at M5 |
 | β | TBD | 0.1 | |
 | Learning rate | TBD | Sweep on ρ=0.5 | |
-| Epochs | TBD | 2–3 | |
-| ρ grid | TBD | {0, 0.25, 0.5, 0.75, 1} | |
-| Seeds | TBD | 3 | |
-| Baselines included | TBD | ties, KTO, SFT, positive control | |
+| Epochs | **Decided 2026-11-24:** 5 for every run | 2–3 | Same for every model, ρ and seed. Checkpoints are saved densely (every 25 steps to 300, then every 100). |
+| Checkpoint selection | **Decided 2026-11-24:** best validation u per run (primary); matched validation u (controlled) | — | Primary: for each run, the checkpoint with the highest validation u (each condition at its best fact learning). Also reported: the matched-u checkpoint (§10.3: first checkpoint reaching a common validation-u target), which rules out "lower bias because less was learned". Both come from saved checkpoints at no extra cost. Test data is never used for selection. |
+| ρ grid | **Decided 2026-11-23:** {0, 0.25, 0.5, 0.75, 1} | {0, 0.5, 1} | Order: pilot ρ ∈ {0, 0.5, 1} with 1 seed (M7) → same 3 ρ with 3 seeds → ρ ∈ {0.25, 0.75} with 3 seeds (15 runs). Extra points (e.g. 0.1, 0.9) only where a curve bends, chosen after the 5-point grid with the reason recorded. Rationale: 0/0.5/1 carry the main claims; 0.25/0.75 give the curve shape and trend test; seeds are worth more than extra ρ values, and every ρ costs the same compute. |
+| Seeds | **Decided 2026-11-23:** 3 per ρ | 1 | Same 3 seeds (LoRA init + data order) for every ρ (paired design). Rule fixed in advance: after the pilot, run 2–3 extra seeds at ρ = 0.5; if the seed SD of \|v\| or \|w\| exceeds ~⅓ of the matched-vs-crossed difference, use 5 seeds for ρ ∈ {0, 0.5, 1} (0.25/0.75 stay at 3). Baselines: ties ×3, KTO ×3, SFT ×3, positive control ×1. Split across the 3 teammates **by seed, not by ρ**: each teammate runs every ρ for one seed, so any machine/environment difference shows up as seed variance instead of being confounded with ρ. Everyone runs the same git commit, environment file and data MANIFEST hash (logged per run). |
+| Baselines included | **Decided 2026-11-24:** positive control, matched + ties, KTO (last); SFT dropped | ties, KTO, SFT, positive control | Priority order: positive control (needed: validates the v metric, T5) → matched + ties × 3 (main competitor) → KTO × 3 last (answers "why not an unpaired method?"). SFT dropped: it never sees incorrect answers, so it says little about pairing. Also evaluate each untrained base model once: generation metrics ("before" point) and u/v/w on log π_ref (pre-existing tone preference; `src/train/reference.py`). |
 | Warmth-rate measurement for generations | TBD | LLM judge | |
-| Compute budget | TBD | ~1 A100-40GB | |
+| Compute budget | **Known 2026-11-24:** 2× A100-40GB (NYU Open OnDemand) and ~300+ GPU-hours **per teammate** (3 teammates, ~900+ total) | — | Estimate (sequences ~150–250 tokens): 4B ≈ 1.5–2 h/run → main grid + baselines + LR sweep ≈ 55 GPU-h; 1.7B dev + core ≈ 15 GPU-h; optional third model core ≈ 20–40 GPU-h; evaluation + persona vectors ≈ 20 GPU-h. Total ≈ 110–130 GPU-h, leaving margin for reruns or 5 seeds. Runs must checkpoint and resume. |
 
 Record each decision with date and rationale.
 

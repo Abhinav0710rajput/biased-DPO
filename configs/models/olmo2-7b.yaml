@@ -1,0 +1,12 @@
+# Second family: core grid ρ ∈ {0, 0.5, 1} × 3 seeds.
+# Check with src/train/check_template.py before any run: the end-of-turn token must follow the response.
+model:
+  name: olmo2-7b
+  hf_id: allenai/OLMo-2-1124-7B-Instruct
+  path: null
+  chat_template_kwargs: {}
+  eot_token: null                         # null = the tokenizer's eos_token
+train:
+  micro_quartets: 4
+eval:
+  batch_quartets: 8

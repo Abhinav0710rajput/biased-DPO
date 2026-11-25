@@ -1,0 +1,11 @@
+# Scaling model: core grid ρ ∈ {0, 0.5, 1} × 3 seeds.
+model:
+  name: qwen3-8b
+  hf_id: Qwen/Qwen3-8B
+  path: null
+  chat_template_kwargs: {enable_thinking: false}
+  eot_token: "<|im_end|>"
+train:
+  micro_quartets: 4
+eval:
+  batch_quartets: 8

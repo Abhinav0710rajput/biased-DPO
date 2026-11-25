@@ -1,0 +1,56 @@
+# Default settings for every quartet-DPO run (Docs/project_plan.md §7, §8, §18).
+# A run = this file + one configs/models/<model>.yaml + command-line overrides (--set key=value).
+# Values here are FIXED across ρ and seeds; only `rho`, `seed` and `objective` change between runs.
+
+data:
+  dir: data/quartets
+  train: train.jsonl
+  eval_splits: [val, test, ood_sciq]      # scored at every evaluation step (selection uses val only)
+  verify_manifest: true                   # refuse to run if a file's sha256 differs from MANIFEST.json
+
+prompt:
+  # §5.10. Identical for all four responses of a quartet; never asks for a tone.
+  template: "Answer the question using the passage.\n\nPassage: {passage}\n\nQuestion: {question}"
+  include_eot: true                       # the end-of-turn token is part of every response (training and eval)
+
+objective:
+  name: dpo                               # dpo | ties | posctrl   (kto is added later, see Docs/checklist.md)
+  rho: 0.5                                # crossed share: (1-ρ)/2 per matched pair, ρ/2 per crossed pair
+  beta: 0.1
+  tie_weight: 0.5                         # ties only: weight of each tie pair (CW~CN, IW~IN)
+  posctrl_weights: {CW_IN: 0.8, CN_IW: 0.2}   # posctrl only: unbalanced crossed pairs (tone predicts the winner)
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.0                            # MUST be 0 so that r = 0 at step 0 (T6) and step-0 gradients match (T2)
+  target_modules: all-linear
+
+train:
+  seed: 0                                 # data order + LoRA init; same 3 seeds (0, 1, 2) for every ρ
+  epochs: 5
+  batch_quartets: 16                      # quartets per optimizer step (whole quartets only)
+  micro_quartets: 8                       # quartets per forward pass (model files override); 16 must be divisible by it
+  lr: 2.0e-5                              # replaced by the per-model sweep result {5e-6, 2e-5, 5e-5}
+  warmup_ratio: 0.05
+  schedule: cosine
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  optimizer: adamw
+  bf16: true
+  gradient_checkpointing: true
+  reference: online                       # training r uses the frozen model (adapters off) on the same batch
+  resume_every: 50                        # steps between resume snapshots (idle GPUs are shut down after 20 min)
+
+eval:
+  dense_every: 25                         # evaluate every 25 steps up to dense_until ...
+  dense_until: 300
+  sparse_every: 100                       # ... then every 100, plus step 0 and the final step
+  batch_quartets: 16
+  select_on: val                          # checkpoint selection split (never test)
+  save_adapters: all                      # keep the LoRA adapter at every evaluation step
+  adapter_dtype: bfloat16                 # saved adapter precision (training itself keeps fp32 adapters)
+
+output:
+  root: runs                              # runs/<model.name>/<run_name>/  (debug runs: runs_debug/)
+  reference_root: runs                    # runs/<model.name>/reference/ (shared by all runs of a model)

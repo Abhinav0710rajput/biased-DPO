@@ -9,3 +9,9 @@ __pycache__/
 .DS_Store
 
 archive/
+# training
+.venv-train/
+runs/
+runs_debug/
+logs/
+.pytest_cache/

@@ -1,0 +1,10 @@
+# Training / evaluation environment (M5+). Same pins on every teammate's machine and on the HPC nodes.
+# On Linux, the torch wheel from PyPI includes CUDA; nothing else is needed for the A100/L4 nodes.
+torch==2.14.1
+transformers==5.23.0
+peft==0.21.3
+accelerate==1.15.0
+safetensors==0.8.0
+numpy==2.4.6
+pyyaml==6.0.3
+pytest==9.1.1

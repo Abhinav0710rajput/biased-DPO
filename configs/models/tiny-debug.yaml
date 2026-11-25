@@ -1,0 +1,15 @@
+# CPU debugging only: a randomly initialised 2-layer Qwen3 with the real Qwen3 tokenizer.
+model:
+  name: tiny-debug
+  hf_id: Qwen/Qwen3-1.7B                  # tokenizer + chat template only
+  path: null
+  tiny_random: true
+  chat_template_kwargs: {enable_thinking: false}
+  eot_token: "<|im_end|>"
+train:
+  micro_quartets: 2
+  batch_quartets: 4
+  bf16: false
+  gradient_checkpointing: false
+eval:
+  batch_quartets: 4

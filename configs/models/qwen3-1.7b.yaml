@@ -1,0 +1,9 @@
+# Scaling model: core grid ρ ∈ {0, 0.5, 1} × 3 seeds. Also the debugging model.
+model:
+  name: qwen3-1.7b
+  hf_id: Qwen/Qwen3-1.7B
+  path: null
+  chat_template_kwargs: {enable_thinking: false}
+  eot_token: "<|im_end|>"
+train:
+  micro_quartets: 16

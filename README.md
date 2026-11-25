@@ -2,12 +2,17 @@
 
 Same Responses, Different Pairs — see `Docs/project_plan.md` for the full spec.
 
-## Environment
+## Environments
+
+Two separate environments:
 
 ```bash
-conda create -n biased-dpo python=3.11   # once
-conda activate biased-dpo
-pip install -r requirements.txt
+# data pipeline (frozen; only needed to rebuild the dataset)
+conda create -n biased-dpo python=3.11 && conda activate biased-dpo && pip install -r requirements.txt
+
+# training / evaluation (pinned versions; the same on every machine)
+python3.12 -m venv .venv-train && .venv-train/bin/pip install -r requirements-train.txt   # local, CPU tests
+bash scripts/hpc/setup_env.sh                                                              # NYU HPC (Singularity + conda)
 ```
 
 ## Data (M0)
@@ -36,6 +41,20 @@ bash scripts/run_full_build.sh assemble      # -> data/quartets/{train,val,test,
 bash scripts/run_full_build.sh audit
 ```
 
-Final set: `data/interim/rewrite_pilot/<run>_merged_tl/kept_quartets.jsonl`.
-Frozen code snapshot: `archive/frozen_v3.6_j6_2026-11-23/`. Earlier: `archive/frozen_v3.3_j5_2026-11-10/`.
-Pilot code and prompt versions it was chosen from: `archive/pilot_2026-11-10/`.
+Final dataset: `data/quartets/{train,val,test,ood_sciq}.jsonl` (9,513 quartets; checksums in `MANIFEST.json`).
+Frozen code snapshot: `archive/frozen_v3.6_j6_2026-11-23/`.
+
+## Training and evaluation (M5+)
+
+Step-by-step order with exact commands: `Docs/checklist.md`. Settings: `configs/default.yaml` + `configs/models/<model>.yaml`.
+
+```bash
+cd src/train
+python check_template.py --model qwen3-4b        # masking check (CPU)
+python reference.py --model qwen3-4b             # reference cache + untrained model's u/v/w (GPU)
+python sanity.py --model qwen3-4b                # T1, T2, T3, T6 (GPU)
+python train.py --model qwen3-4b --rho 0.5 --seed 0 --lr 2e-5    # one run; re-run to resume
+```
+
+On the cluster, wrap any of these with `bash scripts/hpc/submit.sh <a100|l4> <time> <name> python ...`.
+CPU tests (tiny random model): `.venv-train/bin/python -m pytest -q tests/`.
