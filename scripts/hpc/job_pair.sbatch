@@ -22,7 +22,7 @@ run() {  # $1 = GPU index, rest = command
   local gpu=$1; shift
   singularity exec --nv --overlay "$OVERLAY":ro "$SIF" /bin/bash -c "
     source /ext3/env.sh
-    export CUDA_VISIBLE_DEVICES=$gpu HF_HOME=$HF_HOME HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
+    export CUDA_VISIBLE_DEVICES=$gpu HF_HOME=$HF_HOME HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
     cd src/train && $*" > "logs/${SLURM_JOB_NAME}_${SLURM_JOB_ID}_gpu$gpu.out" 2>&1
 }
 echo "GPU0: ${a[*]}"; echo "GPU1: ${b[*]}"

@@ -18,5 +18,5 @@ echo "host $(hostname) | job $SLURM_JOB_ID | $(date) | $*"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 singularity exec --nv --overlay "$OVERLAY":ro "$SIF" /bin/bash -c "
   source /ext3/env.sh
-  export HF_HOME=$HF_HOME HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
+  export HF_HOME=$HF_HOME HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
   cd src/train && $*"

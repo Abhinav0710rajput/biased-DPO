@@ -6,7 +6,7 @@ model:
   chat_template_kwargs: {enable_thinking: false}
   eot_token: "<|im_end|>"
 train:
-  micro_quartets: 8                       # 32 sequences per forward on an A100-40GB
-  gradient_checkpointing: false           # 2026-11-25: smoke test peaked at 13.8 GB with it on; off is ~25-35% faster
+  micro_quartets: 4                       # 16 sequences per forward; 8 ran out of memory without checkpointing (2026-11-25)
+  gradient_checkpointing: false           # 2026-11-25: on = 13.8 GB at micro 8 (5.2 s/step); off + micro 8 = OOM (39.5 GB)
 eval:
   batch_quartets: 32                      # forward-only; must match the reference cache (reference.py uses this too)
