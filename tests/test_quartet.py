@@ -37,6 +37,16 @@ def test_T1_loss_identity():
     assert sanity.t1()["pass"]
 
 
+def test_overrides_parse_numbers():
+    """--lr 5e-5 reaches the config as the string '5e-05'; it must become a float (YAML alone would keep a string)."""
+    c = load_config("tiny-debug", ["train.lr=5e-05", "train.seed=2", "objective.rho=0.25", "eval.save_adapters=none",
+                                   "train.gradient_checkpointing=false"])
+    assert c["train"]["lr"] == 5e-5 and c["train"]["seed"] == 2 and c["objective"]["rho"] == 0.25
+    assert c["eval"]["save_adapters"] == "none" and c["train"]["gradient_checkpointing"] is False
+    from config import run_name
+    assert run_name(c) == "rho0.25_lr5e-05_beta0.1_seed2"
+
+
 def test_pair_weights_sum_to_one():
     for rho in (0, 0.25, 0.5, 0.75, 1):
         assert abs(sum(pair_weights({"name": "dpo", "rho": rho}).values()) - 1) < 1e-12

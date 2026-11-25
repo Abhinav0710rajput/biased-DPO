@@ -27,6 +27,12 @@ def deep_update(base: dict, upd: dict) -> dict:
 
 
 def parse_value(s: str):
+    """Command-line override value. Numbers first: YAML 1.1 reads '5e-05' (no decimal point) as a string."""
+    for cast in (int, float):
+        try:
+            return cast(s)
+        except ValueError:
+            pass
     return yaml.safe_load(s)
 
 
