@@ -46,6 +46,9 @@ eval:
   dense_every: 25                         # evaluate every 25 steps up to dense_until ...
   dense_until: 300
   sparse_every: 100                       # ... then every 100, plus step 0 and the final step
+  full_every: 200                         # val at every evaluation step; test + SciQ only at step 0, every 200 steps
+                                          # and the last step. The best-val-u checkpoint is scored on them at the end;
+                                          # other checkpoints (matched u) later with score_checkpoint.py
   batch_quartets: 16
   select_on: val                          # checkpoint selection split (never test)
   save_adapters: all                      # keep the LoRA adapter at every evaluation step

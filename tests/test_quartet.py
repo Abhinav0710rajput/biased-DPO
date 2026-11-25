@@ -138,6 +138,8 @@ def test_train_resume_and_T3_T6(reference):
     assert h0 == h1 and len(h0) == 6                                     # T3 on real runs
     ev = [json.loads(l) for l in open(d0 / "eval_log.jsonl")]
     assert [r["step"] for r in ev if r["split"] == "val"] == [0, 3, 6]
+    assert sorted({r["step"] for r in ev if r["split"] == "test" and "posthoc_adapter" not in r}) == [0, 6]  # sparse
+    assert set(json.load(open(d0 / "summary.json"))["at_best"]) == {"val", "test", "ood_sciq"}
     assert all(r["T6_max_abs_r"] == 0.0 for r in ev if r["step"] == 0)   # T6 against the cache
     assert json.loads(open(d0 / "train_log.jsonl").readline())["T6_max_abs_r_train"] == 0.0
     assert (d0 / "adapters/step_00006/adapter_model.safetensors").exists()
@@ -155,8 +157,16 @@ def test_train_resume_and_T3_T6(reference):
         assert abs(a["loss"] - b["loss"]) < 1e-6 and abs(a["u"] - b["u"]) < 1e-5
 
 
+def test_finished_run_is_not_restarted(reference):
+    r = run_train("--rho", "1", "--seed", "0", "--limit-train", "16", "--max-steps", "6", "--set",
+                  "eval.dense_every=3", "train.resume_every=2")
+    assert r.returncode != 0 and "already finished" in (r.stdout + r.stderr)
+
+
 def test_T4_overfit_small(reference):
     """Tiny model, 8 quartets, high LR: training pairwise accuracy must reach 1 and u must grow."""
+    import shutil
+    shutil.rmtree(ROOT / "runs_debug/tiny-debug/rho0.5_lr0.01_beta0.1_seed0", ignore_errors=True)
     r = run_train("--rho", "0.5", "--seed", "0", "--limit-train", "8", "--max-steps", "60", "--set",
                   "train.lr=0.01", "train.epochs=200", "train.batch_quartets=4", "train.warmup_ratio=0",
                   "eval.dense_every=1000", "eval.sparse_every=1000", "eval.save_adapters=none")

@@ -2,8 +2,9 @@
 # NYU HPC Cloud Bursting (course DS-GA 1011): https://ood.burst.hpc.nyu.edu/  (Slurm account below)
 
 export SLURM_ACCOUNT="ds_ga_1011-2026fa"
-export GPU_PARTITION="${GPU_PARTITION:-TODO_A100_PARTITION}"     # TODO: A100 partition name (ask / `sinfo`)
-export L4_PARTITION="${L4_PARTITION:-TODO_L4_PARTITION}"         # TODO: L4 partition name
+export GPU_PARTITION="${GPU_PARTITION:-c12m85-a100-1}"           # 12 CPUs, 85 GB RAM, 1× A100 per node (submit.sh)
+export GPU2_PARTITION="${GPU2_PARTITION:-c24m170-a100-2}"        # 24 CPUs, 170 GB RAM, 2× A100 per node (submit_pair.sh)
+export L4_PARTITION="${L4_PARTITION:-}"                       # TODO: L4 partition name; empty = use the A100 partition
 
 # Where things live on the cluster (scratch, not home: home has small quotas)
 export WORK="${SCRATCH:-$HOME}/biased-dpo"

@@ -62,8 +62,9 @@ def main():
     ap.add_argument("--splits", nargs="+", default=["val", "ood_sciq"])
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--max-new", type=int, default=64)
+    ap.add_argument("--set", nargs="*", default=[], help="config overrides key=value")
     args = ap.parse_args()
-    cfg = load_config(args.model)
+    cfg = load_config(args.model, args.set)
     tok = load_tokenizer(cfg)
     model = load_model(cfg, tok)
     kw = cfg["model"].get("chat_template_kwargs") or {}

@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 source scripts/hpc/env.sh
 gpu=$1; time=$2; name=$3; shift 3
-part=$([[ $gpu == l4 ]] && echo "$L4_PARTITION" || echo "$GPU_PARTITION")
-[[ $part == TODO* ]] && { echo "set GPU_PARTITION / L4_PARTITION in scripts/hpc/env.sh first"; exit 1; }
+part=$([[ $gpu == l4 && -n "$L4_PARTITION" ]] && echo "$L4_PARTITION" || echo "$GPU_PARTITION")
+[[ $gpu == l4 && -z "$L4_PARTITION" ]] && echo "(no L4 partition set; using $GPU_PARTITION)"
 mkdir -p logs
 sbatch -A "$SLURM_ACCOUNT" -p "$part" --time="$time" --job-name="$name" scripts/hpc/job.sbatch "$@"

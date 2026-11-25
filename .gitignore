@@ -13,5 +13,6 @@ archive/
 .venv-train/
 runs/
 runs_debug/
+runs_smoke/
 logs/
 .pytest_cache/

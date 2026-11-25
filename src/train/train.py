@@ -42,6 +42,51 @@ def eval_steps(cfg: dict, total: int) -> list[int]:
     return sorted(x for x in s if x <= total)
 
 
+def score_splits(model, tok, cfg: dict, eval_enc: dict, ref: dict, splits: list[str], step: int) -> tuple[list, dict]:
+    """Score `splits` with the current model: per-token log π arrays + one summary row per split
+    (r = log π − log π_ref; summed, per-token and answer-span versions)."""
+    rows, arrays = [], {}
+    for split in splits:
+        t0 = time.time()
+        logp, _ = score_encoded(model, eval_enc[split], cfg["eval"]["batch_quartets"], tok.pad_token_id)
+        arrays[split] = logp
+        r_tok = logp.astype(np.float64) - ref[split]["logp"]
+        off, span = ref[split]["offsets"], ref[split]["span"]
+        n_tok = np.diff(off).reshape(-1, 4)
+        r_sum = sums_from_tokens(r_tok, off)
+        row = {"step": step, "split": split, **quartet_metrics(r_sum),
+               **quartet_metrics(r_sum / np.maximum(n_tok, 1), "tok_"),
+               **quartet_metrics(sums_from_tokens(r_tok, off, span), "span_"), "sec": round(time.time() - t0, 2)}
+        if step == 0:
+            row["T6_max_abs_r"] = float(np.abs(r_tok).max())
+            if row["T6_max_abs_r"] > 0:
+                print(f"WARNING T6: max |r| at step 0 on {split} = {row['T6_max_abs_r']:.3g} (expected 0)")
+        rows.append(row)
+    return rows, arrays
+
+
+def load_reference(cfg: dict, enc: Encoder) -> tuple[dict, dict]:
+    """Reference cache (per-token log π_ref) + the matching encoded eval splits; checks the tokenization."""
+    ref, eval_enc = {}, {}
+    ref_meta = json.load(open(reference_dir(cfg) / "meta.json"))
+    for split in cfg["data"]["eval_splits"]:
+        z = np.load(reference_dir(cfg) / f"{split}.npz")
+        n = ref_meta["splits"][split]["quartets"]
+        e = enc.encode(load_quartets(ROOT / cfg["data"]["dir"] / f"{split}.jsonl")[:n])
+        if tokenization_hash(e) != ref_meta["splits"][split]["tokenization"]:
+            raise SystemExit(f"{split}: tokenization differs from the reference cache; rebuild it")
+        ref[split] = {"logp": z["logp"], "offsets": z["offsets"], "span": z["span"]}
+        eval_enc[split] = e
+    return ref, eval_enc
+
+
+def load_adapter_weights(model, adapter_dir: Path) -> None:
+    from peft import set_peft_model_state_dict
+    from safetensors.torch import load_file
+    sd = load_file(adapter_dir / "adapter_model.safetensors")
+    set_peft_model_state_dict(model, {k: v.float() for k, v in sd.items()})
+
+
 def jsonl_append(path: Path, obj: dict) -> None:
     with open(path, "a") as f:
         f.write(json.dumps(obj) + "\n")
@@ -64,6 +109,8 @@ class Run:
 
         prov = {"git": git_info(), "data_sha256": data_fingerprint(cfg), "versions": versions(),
                 "limit_train": limit_train, "max_steps": max_steps}
+        if (self.dir / "summary.json").exists():
+            raise SystemExit(f"{self.dir} is already finished (summary.json exists)")
         cfg_path = self.dir / "config.json"
         if cfg_path.exists():
             old = json.load(open(cfg_path))
@@ -86,16 +133,7 @@ class Run:
         self.eval_at = eval_steps(cfg, self.total)
 
         # reference cache (per-token log π_ref on the eval splits) and the matching tokenization
-        self.ref, self.eval_enc = {}, {}
-        ref_meta = json.load(open(reference_dir(cfg) / "meta.json"))
-        for split in cfg["data"]["eval_splits"]:
-            z = np.load(reference_dir(cfg) / f"{split}.npz")
-            n = ref_meta["splits"][split]["quartets"]
-            e = self.enc.encode(load_quartets(ROOT / cfg["data"]["dir"] / f"{split}.jsonl")[:n])
-            if tokenization_hash(e) != ref_meta["splits"][split]["tokenization"]:
-                raise SystemExit(f"{split}: tokenization differs from the reference cache; rebuild it")
-            self.ref[split] = {"logp": z["logp"], "offsets": z["offsets"], "span": z["span"]}
-            self.eval_enc[split] = e
+        self.ref, self.eval_enc = load_reference(cfg, self.enc)
 
         self.model = build_peft_model(cfg, self.tok)
         params = [p for p in self.model.parameters() if p.requires_grad]
@@ -146,31 +184,24 @@ class Run:
         self.model.peft_config["default"].save_pretrained(d)
 
     # ------------------------------------------------------------ evaluation
+    def full_eval_step(self, step: int) -> bool:
+        return step == 0 or step == self.total or step % self.cfg["eval"]["full_every"] == 0
+
     def evaluate(self):
+        """Validation at every evaluation step; the other splits (test, SciQ) at step 0, every full_every steps
+        and the last step. The best-validation-u checkpoint is scored on them at the end (finish)."""
         t0 = time.time()
-        arrays = {}
-        for split, e in self.eval_enc.items():
-            logp, _ = score_encoded(self.model, e, self.cfg["eval"]["batch_quartets"], self.tok.pad_token_id)
-            ref = self.ref[split]
-            arrays[split] = logp
-            r_tok = logp.astype(np.float64) - ref["logp"]
-            off, span = ref["offsets"], ref["span"]
-            n_tok = np.diff(off).reshape(-1, 4)
-            r_sum = sums_from_tokens(r_tok, off)
-            row = {"step": self.step, "split": split, **quartet_metrics(r_sum),
-                   **quartet_metrics(r_sum / np.maximum(n_tok, 1), "tok_"),
-                   **quartet_metrics(sums_from_tokens(r_tok, off, span), "span_")}
-            if self.step == 0:
-                row["T6_max_abs_r"] = float(np.abs(r_tok).max())
-                if row["T6_max_abs_r"] > 0:
-                    print(f"WARNING T6: max |r| at step 0 on {split} = {row['T6_max_abs_r']:.3g} (expected 0)")
+        sel_split = self.cfg["eval"]["select_on"]
+        splits = list(self.eval_enc) if self.full_eval_step(self.step) else [sel_split]
+        rows, arrays = score_splits(self.model, self.tok, self.cfg, self.eval_enc, self.ref, splits, self.step)
+        for row in rows:
             jsonl_append(self.dir / "eval_log.jsonl", row)
         np.savez_compressed(self.dir / "eval" / f"step_{self.step:05d}.npz", **arrays)
         self.save_adapter()
-        v = [json.loads(l) for l in open(self.dir / "eval_log.jsonl")][-len(self.eval_enc):]
-        sel = next(r for r in v if r["split"] == self.cfg["eval"]["select_on"])
-        print(f"[eval step {self.step}] {self.cfg['eval']['select_on']} u={sel['u']:.3f} |v|={sel['abs_v']:.3f} "
-              f"|w|={sel['abs_w']:.3f} worst={sel['worst_case_acc']:.3f} ({time.time() - t0:.0f}s)", flush=True)
+        sel = next(r for r in rows if r["split"] == sel_split)
+        print(f"[eval step {self.step}] {sel_split} u={sel['u']:.3f} |v|={sel['abs_v']:.3f} "
+              f"|w|={sel['abs_w']:.3f} worst={sel['worst_case_acc']:.3f} splits={splits} ({time.time() - t0:.0f}s)",
+              flush=True)
 
     # ------------------------------------------------------------ training
     def r_batch(self, idx: list[int]):
@@ -193,6 +224,7 @@ class Run:
                 continue
             if step >= self.total:
                 break
+            t_step = time.time()
             jsonl_append(self.dir / "batch_hashes.jsonl",
                          {"step": step, "hash": batch_hash([self.train.qids[i] for i in idx])})
             rs, tok_r, tok_n = [], [0.0, 0.0], [0, 0]
@@ -220,6 +252,9 @@ class Run:
                    "r_tok_warm": tok_r[0] / max(tok_n[0], 1), "r_tok_neutral": tok_r[1] / max(tok_n[1], 1)}
             if step == 0:
                 row["T6_max_abs_r_train"] = float(r_all.abs().max())
+            if torch.cuda.is_available():
+                row["max_mem_gb"] = round(torch.cuda.max_memory_allocated() / 2**30, 2)
+            row["sec"] = round(time.time() - t_step, 3)
             jsonl_append(self.dir / "train_log.jsonl", row)
             self.step = step + 1
             if self.step % 10 == 0:
@@ -240,6 +275,16 @@ class Run:
         rows = [json.loads(l) for l in open(self.dir / "eval_log.jsonl")]
         sel = [r for r in rows if r["split"] == self.cfg["eval"]["select_on"]]
         best = max(sel, key=lambda r: (r["u"], -r["step"]))
+        missing = [s for s in self.eval_enc if not any(r["step"] == best["step"] and r["split"] == s for r in rows)]
+        adapter = self.dir / "adapters" / f"step_{best['step']:05d}"
+        if missing and adapter.exists():           # score the selected checkpoint on test / SciQ from its saved adapter
+            load_adapter_weights(self.model, adapter)
+            new, arrays = score_splits(self.model, self.tok, self.cfg, self.eval_enc, self.ref, missing, best["step"])
+            for row in new:
+                row["posthoc_adapter"] = self.cfg["eval"]["adapter_dtype"]
+                jsonl_append(self.dir / "eval_log.jsonl", row)
+            np.savez_compressed(self.dir / "eval" / f"step_{best['step']:05d}_posthoc.npz", **arrays)
+            rows += new
         summary = {"total_steps": self.total, "best_val_u_step": best["step"], "best_val_u": best["u"],
                    "at_best": {r["split"]: r for r in rows if r["step"] == best["step"]},
                    "final": {r["split"]: r for r in rows if r["step"] == self.total}}
@@ -268,8 +313,8 @@ def main():
     cfg = load_config(args.model, sets)
     if cfg["objective"]["name"] != "dpo":
         cfg["objective"]["rho"] = 0.0 if cfg["objective"]["name"] == "ties" else 1.0
-    if args.limit_train or args.max_steps:
-        cfg["output"]["root"] = "runs_debug"
+    if (args.limit_train or args.max_steps) and cfg["output"]["root"] == "runs":
+        cfg["output"]["root"] = "runs_debug"          # debug runs never land next to real ones
     Run(cfg, args.limit_train, args.max_steps, args.stop_after).fit()
 
 

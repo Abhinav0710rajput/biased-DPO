@@ -8,8 +8,10 @@ this file is the to-do list with the exact commands. Tick items as they are done
 (Phase A); the other three follow (Phase B) before the extras (Phase C).**
 
 **Fixed for every run:** β = 0.1, LoRA r = 16 / α = 32 / dropout 0 / all linear layers, 16 quartets per step,
-5 epochs (≈ 2,025 steps), cosine schedule with 5% warmup, bf16. Evaluation at step 0, every 25 steps to 300,
-then every 100 and the last step. Settings: `configs/default.yaml` + `configs/models/<model>.yaml`.
+5 epochs (≈ 2,025 steps), cosine schedule with 5% warmup, bf16. Evaluation on **val** at step 0, every 25 steps
+to 300, then every 100 and the last step (31 points); **test and SciQ** at step 0, every 200 steps and the last
+step, plus the best-val-u checkpoint at the end. Other checkpoints (matched u) are scored later from their saved
+adapters with `score_checkpoint.py`. Settings: `configs/default.yaml` + `configs/models/<model>.yaml`.
 
 **Checkpoint selection:** best validation u per run (primary); matched validation u (controlled comparison).
 Test data is never used for selection.
@@ -26,12 +28,23 @@ each run records both (`config.json`) and refuses to start if the data differs f
 
 - [ ] Log in to https://ood.burst.hpc.nyu.edu/ (NYU VPN off campus); open a terminal
 - [ ] Clone the repo into scratch (`$SCRATCH/biased-dpo/...`), not home
-- [ ] Fill in the partition names in `scripts/hpc/env.sh` (`GPU_PARTITION`, `L4_PARTITION`); check the
-      Singularity image and overlay template paths marked TODO exist
+- [x] Slurm account `ds_ga_1011-2026fa`; partitions `c12m85-a100-1` (1 A100 per node, `submit.sh`) and
+      `c24m170-a100-2` (2 A100s per node, `submit_pair.sh`: two runs at once, one per GPU) — set in `scripts/hpc/env.sh`
+- [ ] L4 partition name (optional; without it, "l4" jobs go to the A100 partition)
+- [ ] Check that the Singularity image and overlay template paths marked TODO in `scripts/hpc/env.sh` exist
 - [ ] `bash scripts/hpc/setup_env.sh` (once; builds the conda env from `requirements-train.txt`)
 - [ ] `bash scripts/hpc/download_models.sh qwen3-4b qwen3-1.7b`
 - [ ] Local (optional, CPU): `python3.12 -m venv .venv-train && .venv-train/bin/pip install -r requirements-train.txt`,
-      then `.venv-train/bin/python -m pytest -q tests/` (11 tests, ~2 min)
+      then `.venv-train/bin/python -m pytest -q tests/` (12 tests, ~2 min)
+
+### A0b. Smoke test (each teammate, after setup and after every code change)
+
+- [ ] `bash scripts/hpc/submit.sh a100 01:00:00 smoke-4b python smoke.py --model qwen3-4b` (~15–25 min)
+      → must print `ALL PASSED`. Runs the whole pipeline on the real model at small scale (masking, open-book,
+      reference cache, T1/T2/T3/T6, two short training runs with a kill-and-resume, output checks, scoring a saved
+      adapter) and projects time per full run and peak memory. Output in `runs_smoke/` (never mixed with `runs/`).
+      Send the last ~30 lines of the log.
+- [x] Locally on CPU with the tiny model: `python src/train/smoke.py --model tiny-debug` — 2026-11-25: ALL PASSED (25 checks)
 
 ### A1. Model checks (M5)
 
@@ -39,17 +52,15 @@ each run records both (`config.json`) and refuses to start if the data differs f
       — 2026-11-24: all OK (response tokens + end-of-turn decode exactly; matches each chat template; answer spans covered)
 - [x] Length check (V8) with the Qwen3 tokenizer: `python src/train/check_lengths.py --model qwen3-4b`
       — 2026-11-24: see "Open issue: token lengths" below
-- [ ] Open-book vs closed-book accuracy (GPU, minutes):
-      `bash scripts/hpc/submit.sh l4 01:00:00 m5-4b python openbook.py --model qwen3-4b`
-      → `runs/qwen3-4b/m5/openbook.json`. Keep open-book if accuracy is clearly below ~90–95%.
-- [ ] Reference cache **and the untrained model's own u/v/w** (GPU, minutes):
-      `bash scripts/hpc/submit.sh a100 01:00:00 ref-4b python reference.py --model qwen3-4b`
-      → `runs/qwen3-4b/reference/base_uvw.json`: u/v/w on log π_ref (summed, per token, answer span) for
-      val / test / SciQ. v > 0 here means the model already prefers warm wording before any training.
+- [ ] Open-book check **and** reference cache, as one job on a 2-A100 node:
+      `bash scripts/hpc/submit_pair.sh 01:00:00 m5-4b python openbook.py --model qwen3-4b :: python reference.py --model qwen3-4b`
+  - `runs/qwen3-4b/m5/openbook.json`: is the task too easy? Keep open-book if accuracy is clearly below ~90–95%.
+  - `runs/qwen3-4b/reference/base_uvw.json`: the **untrained model's own u/v/w** (summed, per token, answer span)
+    on val / test / SciQ. v > 0 means it already prefers warm wording. The cache is required by every training run.
 
 ### A2. Sanity checks (§9)
 
-- [x] CPU, tiny random model: `pytest -q tests/` — 2026-11-24: 11 passed
+- [x] CPU, tiny random model: `pytest -q tests/` — 2026-11-25: 12 passed
       (T1 loss identity; T2 step-0 gradients identical across ρ, difference exactly 0; T3 batch hashes identical
       across ρ; T6 r = 0 exactly on training batches and against the reference cache; T4 overfit on 8 quartets;
       padding invariance; kill-and-resume reproduces the uninterrupted run)
@@ -115,7 +126,7 @@ cross-family plots. Downloads: `bash scripts/hpc/download_models.sh qwen3-8b olm
 
 ---
 
-## Open issue: token lengths (found 2026-11-24)
+## Token lengths (checked 2026-11-24, decided 2026-11-25)
 
 The data was length-balanced in **words**. In Qwen3 **tokens** (`runs/qwen3-4b/m5/lengths.json`):
 
@@ -125,17 +136,16 @@ The data was length-balanced in **words**. In Qwen3 **tokens** (`runs/qwen3-4b/m
 | test | 28.5 / 27.9 / 28.1 / 27.6 | 74% | +0.52 |
 | SciQ | 20.6 / 19.6 / 20.4 / 19.4 | 78% | +0.98 |
 
-Warm responses are slightly longer in tokens (about 1.5% on HaluEval, 5% on SciQ), and about a quarter of rows
-are outside the ±max(2 tokens, 10%) tolerance. Decision needed (see the chat of 2026-11-24): keep the data as is
-and control for length in the analysis (per-token metrics are already logged; plan §10.5 length diagnostics), or
-filter training quartets to the token-balanced ones.
+**Decision: keep the data as is.** The average gap is under one token (≈1.5% on HaluEval, 5% on SciQ). Per-token
+metrics are logged for every evaluation, and the analysis reports the length diagnostics (|v| vs the warm−neutral
+token gap, plan §10.5). Repeat `check_lengths.py` for each Phase B model.
 
 ## Where things are
 
 | What | Where |
 |---|---|
 | Settings | `configs/default.yaml`, `configs/models/*.yaml` |
-| Code | `src/train/`: `train.py` (training), `reference.py` (reference cache + untrained u/v/w), `sanity.py` (T1–T3, T6), `openbook.py`, `check_template.py`, `check_lengths.py`; shared: `config.py`, `data.py`, `models.py`, `scoring.py` |
+| Code | `src/train/`: `train.py` (training), `reference.py` (reference cache + untrained u/v/w), `sanity.py` (T1–T3, T6), `smoke.py` (end-to-end check), `score_checkpoint.py` (score saved checkpoints later), `openbook.py`, `check_template.py`, `check_lengths.py`; shared: `config.py`, `data.py`, `models.py`, `scoring.py` |
 | Tests | `tests/test_quartet.py` (CPU, tiny model) |
-| HPC | `scripts/hpc/`: `env.sh` (account, partitions, paths), `setup_env.sh`, `download_models.sh`, `submit.sh`, `job.sbatch` |
+| HPC | `scripts/hpc/`: `env.sh` (account, partitions, paths), `setup_env.sh`, `download_models.sh`, `submit.sh` + `job.sbatch` (1 GPU), `submit_pair.sh` + `job_pair.sbatch` (2 runs on a 2-GPU node) |
 | Outputs (not in git) | `runs/<model>/reference/`, `runs/<model>/m5/`, `runs/<model>/<run>/` (see the `train.py` docstring) |
