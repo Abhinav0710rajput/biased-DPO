@@ -1,0 +1,22 @@
+{
+ "val/open": {
+  "correct": 0.9,
+  "has_correct": 0.945,
+  "has_wrong": 0.055
+ },
+ "val/closed": {
+  "correct": 0.135,
+  "has_correct": 0.185,
+  "has_wrong": 0.085
+ },
+ "ood_sciq/open": {
+  "correct": 0.96,
+  "has_correct": 0.96,
+  "has_wrong": 0.0
+ },
+ "ood_sciq/closed": {
+  "correct": 0.705,
+  "has_correct": 0.71,
+  "has_wrong": 0.01
+ }
+}
