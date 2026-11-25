@@ -15,16 +15,22 @@ import torch.nn.functional as F
 
 # ---------------------------------------------------------------- log-probs
 
+LOGPROB_CHUNK = 8   # sequences per fp32 log-softmax chunk (memory only; results are identical)
+
 def token_logps(model, batch: dict) -> torch.Tensor:
     """[S, K] log-prob of each target token (0 outside the response). Only the last K+1 positions'
     logits are computed (responses are at the end of the left-padded sequences)."""
     K = batch["K"]
     out = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"],
                 position_ids=batch["position_ids"], logits_to_keep=K + 1, use_cache=False)
-    logits = out.logits[:, :-1].float()                       # predicts positions L-K .. L-1
+    logits = out.logits[:, :-1]                               # predicts positions L-K .. L-1 (model dtype)
     tgt = batch["targets"]
-    lp = logits.gather(-1, tgt.unsqueeze(-1)).squeeze(-1) - torch.logsumexp(logits, -1)
-    return lp * batch["resp_mask"]
+    # fp32 log-softmax pieces in chunks of sequences: a full fp32 copy of [S, K, vocab] is ~6 GB at S = 128
+    parts = []
+    for i in range(0, logits.shape[0], LOGPROB_CHUNK):
+        lg = logits[i:i + LOGPROB_CHUNK].float()
+        parts.append(lg.gather(-1, tgt[i:i + LOGPROB_CHUNK].unsqueeze(-1)).squeeze(-1) - torch.logsumexp(lg, -1))
+    return torch.cat(parts) * batch["resp_mask"]
 
 
 def to_device(batch: dict, device) -> dict:
