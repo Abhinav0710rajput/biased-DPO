@@ -6,7 +6,9 @@ model:
   chat_template_kwargs: {enable_thinking: false}
   eot_token: "<|im_end|>"
 train:
-  micro_quartets: 8                       # 32 sequences per forward
+  lr: 5.0e-6                              # LR sweep 2026-11-25 (results/qwen3-4b/lr_sweep.json): all three tied on val
+                                          # pairwise acc (0.994–0.995); 5e-6 lowest val loss. Frozen for every 4B run.
+  micro_quartets: 8                      # 32 sequences per forward
   gradient_checkpointing: true            # 2026-11-25 on an A100-40GB: on + micro 8 = 13.8 GB, 5.2 s/step (smoke test);
                                           # off ran out of memory even at micro 4 (fp32 LoRA input copies per layer)
 eval:

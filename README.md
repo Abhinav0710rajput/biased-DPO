@@ -61,7 +61,7 @@ All scripts live in `src/train/` and are run from there.
 | `score_checkpoint.py` | score saved checkpoints of a finished run on more splits (e.g. matched-u on test) | GPU, minutes |
 
 ```bash
-python train.py --model qwen3-4b --rho 0.5 --seed 0 --lr 2e-5     # -> runs/qwen3-4b/rho0.5_lr2e-05_beta0.1_seed0/
+python train.py --model qwen3-4b --rho 0.5 --seed 0     # LR from the model config (4B: 5e-6) -> runs/qwen3-4b/rho0.5_lr5e-06_beta0.1_seed0/
 ```
 
 ### Local tests (CPU, tiny random model)
@@ -101,8 +101,8 @@ bash scripts/hpc/submit.sh a100 01:00:00 smoke-4b python smoke.py --model qwen3-
 
 # two jobs on a 2-A100 node, one per GPU (pair runs of similar length)
 bash scripts/hpc/submit_pair.sh 06:00:00 4b-s0-r0r1 \
-  python train.py --model qwen3-4b --rho 0 --seed 0 --lr 2e-5 :: \
-  python train.py --model qwen3-4b --rho 1 --seed 0 --lr 2e-5
+  python train.py --model qwen3-4b --rho 0 --seed 0 :: \
+  python train.py --model qwen3-4b --rho 1 --seed 0
 
 squeue -u $USER                  # job status (R = running, PD = waiting)
 tail -f logs/<name>_<jobid>.out  # follow a log (paired jobs: logs/<name>_<jobid>_gpu0.out / _gpu1.out)

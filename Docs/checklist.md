@@ -87,15 +87,18 @@ Each LR is a separate, independent run (`runs/qwen3-4b/rho0.5_lr<LR>_beta0.1_see
       accuracy 0.993 / 0.989, val u 143 / 111, |v| ≈ 14 for both). The node was then **shut down 20 min after GPU 1
       went idle**, killing 5e-5 at step ~90 → one idle GPU stops the whole node. Never queue a third run after a pair
       (`submit_lr_sweep.sh` does exactly that: don't use it). Pair only runs of equal length, or use `submit.sh`.
-- [ ] LR 5e-5, resumed from step 50 on one GPU:
-      `bash scripts/hpc/submit.sh a100 06:00:00 4b-lr5e-5 python train.py --model qwen3-4b --rho 0.5 --seed 0 --lr 5e-5`
-- [ ] Compare: `bash scripts/hpc/collect_results.sh`, push, then `python src/train/lr_sweep.py --model qwen3-4b`
+- [x] LR 5e-5, resumed on one GPU (job 43447, 4.5 h): finished.
+- [x] Compare: `bash scripts/hpc/collect_results.sh`, push, then `python src/train/lr_sweep.py --model qwen3-4b`
       (anywhere with the results pulled; `--root runs` reads `runs/` directly). Rule: highest **validation pairwise
       accuracy** (best over evaluation steps); within 0.5 points → lower validation loss; winner at an edge → add
-      one more LR beyond it. Writes `results/qwen3-4b/lr_sweep.json`. Record the LR in §18 and in
-      `configs/models/qwen3-4b.yaml` (`train.lr`).
-- [ ] The winning run **is** the ρ = 0.5, seed 0 run (identical settings); keep it.
-- [ ] Seed-noise rule (§18): 2–3 extra seeds at ρ = 0.5 → decide 3 vs 5 seeds for ρ ∈ {0, 0.5, 1}.
+      one more LR beyond it. Writes `results/qwen3-4b/lr_sweep.json`.
+      — 2026-11-25: **LR = 5e-6** (now the default in `configs/models/qwen3-4b.yaml`). Val pairwise accuracy
+      0.9941 / 0.9947 / 0.9954 (5e-6 / 2e-5 / 5e-5) = a tie; val loss 0.0163 / 0.0189 / 0.0171 → 5e-6. At the grid
+      edge, but the surface is flat, so no lower LR was added. Recorded in plan §18.
+- [x] The winning run **is** the ρ = 0.5, seed 0 run: `rho0.5_lr5e-06_beta0.1_seed0` (keep it; don't rerun).
+      The 2e-5 and 5e-5 runs are sweep-only (keep them in `results/` for the appendix).
+- [ ] Seed-noise rule (§18): ρ = 0.5 with seeds 1 and 2 (part of A4 anyway; run these first) → decide 3 vs 5
+      seeds for ρ ∈ {0, 0.5, 1}.
 
 ### Sharing results (everyone, after every job)
 
@@ -105,8 +108,15 @@ Each LR is a separate, independent run (`runs/qwen3-4b/rho0.5_lr<LR>_beta0.1_see
 
 ### A4. Main runs (each teammate: their seed)
 
-- [ ] ρ = 0, 0.5, 1 (priority), then 0.25, 0.75:
-      `bash scripts/hpc/submit.sh a100 08:00:00 4b-r<ρ>-s<seed> python train.py --model qwen3-4b --rho <ρ> --seed <seed> --lr <LR>`
+LR 5e-6 is the config default, so the commands need no `--lr`. Each run ≈ 4.2–4.5 h. Pair only runs of equal length
+on a 2-A100 node (a node is shut down 20 min after either GPU goes idle):
+
+- [ ] ρ = 0 and ρ = 1 together:
+      `bash scripts/hpc/submit_pair.sh 06:00:00 4b-s<seed>-r0r1 python train.py --model qwen3-4b --rho 0 --seed <seed> :: python train.py --model qwen3-4b --rho 1 --seed <seed>`
+- [ ] ρ = 0.25 and ρ = 0.75 together (same command with 0.25 / 0.75)
+- [ ] ρ = 0.5 (seed 0: already done by the LR sweep). Seeds 1, 2: alone with `submit.sh`, or paired with that
+      seed's ties baseline (A5), which takes about as long:
+      `bash scripts/hpc/submit.sh a100 06:00:00 4b-s<seed>-r0.5 python train.py --model qwen3-4b --rho 0.5 --seed <seed>`
 - [ ] Check after each run: `summary.json` exists; `eval_log.jsonl` step 0 has `T6_max_abs_r` = 0;
       `batch_hashes.jsonl` identical to the other ρ runs of the same seed.
 
