@@ -83,9 +83,12 @@ GPU memory, and that the curves look sane before submitting the rest.
 
 Each LR is a separate, independent run (`runs/qwen3-4b/rho0.5_lr<LR>_beta0.1_seed0/`); nothing loops over them.
 
-- [ ] All three as one job on a 2-A100 node: `bash scripts/hpc/submit_lr_sweep.sh qwen3-4b` (GPU 0: 2e-5 then
-      5e-5; GPU 1: 5e-6; 10 h limit, ~9 h). Check `logs/lr-qwen3-4b_<jobid>_lr2e-05.out` after ~20 min (step-0 eval,
-      s/step, memory). If the job stops, submit the same command again: finished LRs are skipped, the rest resume.
+- [x] 2026-11-25 job 43016 (2-A100 node): LR 2e-5 and 5e-6 finished (5.5 s/step, ~4.2 h each; val worst-case
+      accuracy 0.993 / 0.989, val u 143 / 111, |v| ≈ 14 for both). The node was then **shut down 20 min after GPU 1
+      went idle**, killing 5e-5 at step ~90 → one idle GPU stops the whole node. Never queue a third run after a pair
+      (`submit_lr_sweep.sh` does exactly that: don't use it). Pair only runs of equal length, or use `submit.sh`.
+- [ ] LR 5e-5, resumed from step 50 on one GPU:
+      `bash scripts/hpc/submit.sh a100 06:00:00 4b-lr5e-5 python train.py --model qwen3-4b --rho 0.5 --seed 0 --lr 5e-5`
 - [ ] Compare: `bash scripts/hpc/collect_results.sh`, push, then `python src/train/lr_sweep.py --model qwen3-4b`
       (anywhere with the results pulled; `--root runs` reads `runs/` directly). Rule: highest **validation pairwise
       accuracy** (best over evaluation steps); within 0.5 points → lower validation loss; winner at an edge → add

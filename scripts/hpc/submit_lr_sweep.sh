@@ -1,4 +1,7 @@
 #!/bin/bash
+# WARNING (2026-11-25, job 43016): don't use this. Cloud Bursting shuts the node down once ONE GPU has been idle
+# for 20 min, so the third run (GPU 0, after the pair) gets killed. Use submit_pair.sh for two runs of equal
+# length, and submit.sh for a single run.
 # Learning-rate sweep for one model (ρ = 0.5, seed 0, LRs 2e-5, 5e-6, 5e-5) as ONE job on a 2×A100 node:
 # two LRs in parallel, then the third on GPU 0 (GPU 1 idles meanwhile). Usage:
 #   bash scripts/hpc/submit_lr_sweep.sh <model> [hh:mm:ss] [lr1 lr2 lr3]

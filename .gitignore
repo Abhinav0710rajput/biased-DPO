@@ -11,8 +11,9 @@ __pycache__/
 archive/
 # training
 .venv-train/
-runs/
-runs_debug/
-runs_smoke/
-logs/
+# leading / = only the top-level folders (results/<model>/runs/ must stay tracked)
+/runs/
+/runs_debug/
+/runs_smoke/
+/logs/
 .pytest_cache/
