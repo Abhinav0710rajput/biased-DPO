@@ -1,0 +1,96 @@
+{
+ "config": {
+  "data": {
+   "dir": "data/quartets",
+   "train": "train.jsonl",
+   "eval_splits": [
+    "val",
+    "test",
+    "ood_sciq"
+   ],
+   "verify_manifest": true
+  },
+  "prompt": {
+   "template": "Answer the question using the passage.\n\nPassage: {passage}\n\nQuestion: {question}",
+   "include_eot": true
+  },
+  "objective": {
+   "name": "dpo",
+   "rho": 1.0,
+   "beta": 0.1,
+   "tie_weight": 0.5,
+   "posctrl_weights": {
+    "CW_IN": 0.8,
+    "CN_IW": 0.2
+   }
+  },
+  "lora": {
+   "r": 16,
+   "alpha": 32,
+   "dropout": 0.0,
+   "target_modules": "all-linear"
+  },
+  "train": {
+   "seed": 1,
+   "epochs": 5,
+   "batch_quartets": 16,
+   "micro_quartets": 8,
+   "lr": 5e-06,
+   "warmup_ratio": 0.05,
+   "schedule": "cosine",
+   "weight_decay": 0.0,
+   "max_grad_norm": 1.0,
+   "optimizer": "adamw",
+   "bf16": true,
+   "gradient_checkpointing": true,
+   "reference": "online",
+   "resume_every": 50
+  },
+  "eval": {
+   "dense_every": 25,
+   "dense_until": 300,
+   "sparse_every": 100,
+   "full_every": 200,
+   "batch_quartets": 32,
+   "select_on": "val",
+   "save_adapters": "all",
+   "adapter_dtype": "bfloat16"
+  },
+  "output": {
+   "root": "runs",
+   "reference_root": "runs"
+  },
+  "model": {
+   "name": "qwen3-4b",
+   "hf_id": "Qwen/Qwen3-4B",
+   "path": null,
+   "chat_template_kwargs": {
+    "enable_thinking": false
+   },
+   "eot_token": "<|im_end|>"
+  }
+ },
+ "provenance": {
+  "git": {
+   "commit": "",
+   "dirty_src_or_configs": false
+  },
+  "data_sha256": {
+   "train": "7e7dfe3958c4fb45e72b2613207dfa2531815eaad2bea96f01feb0ff8839ce50",
+   "val": "7df218077c8ae18674c76b36433d273f7cceba05afea59972fa8460478493bbe",
+   "test": "4bb0a62638459ec5e005b6b61c490e19d23067827c3310e1b3d1a1662c75dafe",
+   "ood_sciq": "a3bad2a2370205a42f99786adf2986c44e434bed0b622f8b26f010e5cfbfdf73"
+  },
+  "versions": {
+   "python": "3.12.16",
+   "torch": "2.14.1+cu130",
+   "transformers": "5.23.0",
+   "peft": "0.21.3",
+   "numpy": "2.4.6",
+   "cuda": "13.0",
+   "gpu": "NVIDIA A100-SXM4-40GB"
+  },
+  "limit_train": null,
+  "max_steps": null
+ }
+}
