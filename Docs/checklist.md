@@ -166,6 +166,9 @@ cross-family plots. Downloads: `bash scripts/hpc/download_models.sh qwen3-8b olm
       with u, 183 vs 117); ρ = 1 v = −3.6. Signed w at matched val u ≈ 100: ρ = 0 −0.6, ρ = 1 −4.5 (same pattern as
       β = 0.1); |w| still flat. One pair per β:
       `submit_pair.sh 06:00:00 4b-b<β>-s0 python train.py --model qwen3-4b --rho 0 --seed 0 --set objective.beta=<β> :: python train.py --model qwen3-4b --rho 1 --seed 0 --set objective.beta=<β>`
+- [ ] β = 0.2, ρ ∈ {0, 0.25, 0.5, 1}, seed 0 (added 2026-11-27; predictions P7, P8 in plan §3): tests whether the
+      matched pairs' pull on w is too weak at β = 0.1 to hold w at 0 once crossed pairs are present. Two pairs:
+      ρ 0 + 1 (`4b-b0.2-r0r1`), ρ 0.25 + 0.5 (`4b-b0.2-r025r05`).
 - [ ] Phase 2: Persona vectors (monitoring and steering) on matched / mixed / crossed adapters
 - [ ] Optional: 5 seeds on the core ρ values if results are noisy
 

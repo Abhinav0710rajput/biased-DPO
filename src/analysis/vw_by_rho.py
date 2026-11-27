@@ -2,8 +2,10 @@
 
   python src/analysis/vw_by_rho.py --model qwen3-4b            # β = 0.1 runs, all seeds found
   python src/analysis/vw_by_rho.py --model qwen3-4b --beta 0.05
+  python src/analysis/vw_by_rho.py --model qwen3-4b --score span   # answer tokens only (plan §10.1 secondary)
 
-Writes results/<model>/figures/vw_signed_beta<β>.png, vw_abs_beta<β>.png and vw_by_rho_beta<β>.json.
+Writes results/<model>/figures/vw_signed_beta<β>.png, vw_abs_beta<β>.png and vw_by_rho_beta<β>.json
+(with --score span: vw_signed_span_beta<β>.png, vw_abs_span_beta<β>.png, vw_by_rho_span_beta<β>.json).
 One line per evaluation set; points are the mean over seeds, error bars ± 1 SD (only where ≥ 2 seeds).
 """
 
@@ -29,7 +31,7 @@ def contrasts(r):
     return 0.5 * (CW + IW) - 0.5 * (CN + IN), 0.5 * (CW - IW) - 0.5 * (CN - IN)
 
 
-def collect(model: str, beta: str, lr: str | None):
+def collect(model: str, beta: str, lr: str | None, score: str = "full"):
     base = ROOT / "results" / model / "runs"
     pat = re.compile(rf"^rho([0-9.]+)_lr([0-9.e+-]+)_beta{re.escape(beta)}_seed(\d+)$")
     rows = {}
@@ -42,7 +44,7 @@ def collect(model: str, beta: str, lr: str | None):
         best = json.load(open(d / "summary.json"))["best_val_u_step"]
         for sp in SPLITS:
             steps = list(z[f"{sp}_steps"])
-            v, w = contrasts(z[f"{sp}_full"][steps.index(best)].astype(float))
+            v, w = contrasts(z[f"{sp}_{score}"][steps.index(best)].astype(float))
             rows.setdefault((sp, rho), []).append(
                 {"seed": int(m.group(3)), "v": v.mean(), "w": w.mean(), "abs_v": np.abs(v).mean(), "abs_w": np.abs(w).mean()})
     return rows
@@ -104,21 +106,25 @@ def main():
     ap.add_argument("--model", default="qwen3-4b")
     ap.add_argument("--beta", default="0.1")
     ap.add_argument("--lr", default="5e-06", help="only runs with this LR in the name (the frozen one)")
+    ap.add_argument("--score", choices=("full", "span"), default="full",
+                    help="full response (primary) or answer tokens only (secondary)")
     args = ap.parse_args()
-    summ = summarise(collect(args.model, args.beta, args.lr))
+    summ = summarise(collect(args.model, args.beta, args.lr, args.score))
     if not summ:
         raise SystemExit("no finished runs found")
     out = ROOT / "results" / args.model / "figures"
     out.mkdir(parents=True, exist_ok=True)
     seeds = {f"{r:g}": summ["val"][r]["n_seeds"] for r in sorted(summ["val"])}
     seeds_txt = ", ".join(f"ρ {r}: {n}" for r, n in seeds.items())
-    note = (f"{args.model}, β = {args.beta}, LR {args.lr}; best-validation-u checkpoint of each run.\n"
+    what = "answer tokens only" if args.score == "span" else "full response"
+    note = (f"{args.model}, β = {args.beta}, LR {args.lr}; {what}; best-validation-u checkpoint of each run.\n"
             f"Seeds per ρ — {seeds_txt}. Points = mean over seeds; bars = ±1 SD (only where ≥ 2 seeds).")
-    tag = f"beta{args.beta}"
+    tag = f"span_beta{args.beta}" if args.score == "span" else f"beta{args.beta}"
+    sfx = "  (answer tokens only)" if args.score == "span" else ""
     figure(summ, [("v", "v  (tone: warm − neutral)"), ("w", "w  (tone × fact interaction)")],
-           "Signed v and w by ρ", out / f"vw_signed_{tag}.png", True, note)
+           "Signed v and w by ρ" + sfx, out / f"vw_signed_{tag}.png", True, note)
     figure(summ, [("abs_v", "|v|  (mean over quartets)"), ("abs_w", "|w|  (mean over quartets)")],
-           "|v| and |w| by ρ", out / f"vw_abs_{tag}.png", False, note)
+           "|v| and |w| by ρ" + sfx, out / f"vw_abs_{tag}.png", False, note)
     json.dump({sp: {f"{r:g}": d for r, d in by.items()} for sp, by in summ.items()},
               open(out / f"vw_by_rho_{tag}.json", "w"), indent=1)
     for f in (f"vw_signed_{tag}.png", f"vw_abs_{tag}.png", f"vw_by_rho_{tag}.json"):

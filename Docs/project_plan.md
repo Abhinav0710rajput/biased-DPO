@@ -239,6 +239,19 @@ is unknown. Fitting v ≈ −2.5 − 85/(1 + kρ) to the points above gives only
 - **P5:** at both ρ, val v makes a larger step-100 excursion than at ρ = 0.125 (−16.6) before any correction.
   w at the end is closer to 0 than −4.2 if v is not corrected.
 
+**Predictions for β = 0.2, ρ ∈ {0, 0.25, 0.5, 1}, seed 0 (recorded 2026-11-27, before those runs).** Question: why
+does w reach about its crossed-only value as soon as any crossed pairs are present (ρ = 0.125, 87.5 % matched weight)?
+r scales roughly as 1/β, so compare scale-free ratios (w/u, v/u, val, full response) at the best-val-u checkpoint,
+and also raw values at matched val u ≈ 100. β = 0.1 reference: w/u = −0.2 / −0.9 % (ρ 0, two seeds), −3.7 % (0.25),
+−3.5 to −4.0 % (0.5), −3.3 % (1); v/u = −73 to −76 % at ρ 0. β = 0.05: w/u −0.5 % at ρ 1 (but −4.5 at matched u ≈ 100).
+- **P7 (the matched pairs' pull on w is too weak at β = 0.1):** at β = 0.2, w/u at ρ = 0.25 and 0.5 is clearly less
+  negative than at ρ = 1, a reversal of the β = 0.1 order (0.25 / 0.5 slightly more negative than 1). ρ = 0 stays
+  near 0.
+- **P7-alt (the source of w grows with β):** w/u is more negative at all ρ > 0, including ρ = 1 (which has no
+  matched pairs), and the β = 0.1 order is kept. ρ = 1 is the control that separates P7 from P7-alt.
+- **P8 (v):** at ρ = 0, v/u is smaller in magnitude than at β = 0.1 (the trend from β 0.05 → 0.1 was −87 % → −74 %);
+  at ρ ≥ 0.25, |v/u| < 5 %.
+
 ---
 
 ## 4. Data sources
