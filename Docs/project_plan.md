@@ -208,6 +208,37 @@ A log-linear toy model with shared, non-orthogonal feature directions and **no t
 
 The single most important result is H1 on held-out data at matched `u`.
 
+**Revised predictions (recorded 2026-11-26, after Qwen3-4B ρ ∈ {0, 0.5, 1}, before any other ρ, seed or model).**
+Observed so far (val, best-val-u checkpoint; ρ = 0.5 with 3 seeds, ρ = 0 and 1 with 1 seed): signed v = −88.7 /
+−1.2 / −1.8; signed w = −0.2 / −4.2 / −3.5; |v| = 90 / 15 / 13; |w| = 5.7 / 6.1 / 5.5. The |w| prediction of H1
+("largest at ρ = 1, increasing with ρ") is **not supported**: |w| is dominated by the spread across quartets
+(SD ≈ 7). Signed w was examined only after |w| failed, so it is exploratory until confirmed by the tests below.
+- **P1 (v saturates fast):** v(ρ) ≈ v₀ / (1 + kρ), k ≈ 150 from the two points. Predicted signed v on val:
+  ρ = 0.125 → about −4.5; ρ = 0.25 → about −2.3 (a gradual drop would instead give about −67 and −45).
+- **P2 (w appears fast and stays):** signed w ≈ 0 at ρ = 0 and already −3 to −4 at ρ = 0.125 and 0.25 (gradual: about
+  −1 and −2). |w| shows no reliable trend over ρ.
+- **P3 (confirmation of the exploratory w result):** on the remaining seeds at ρ = 0 and 1, and on the Phase B models,
+  signed w at ρ = 0 is near 0 and clearly negative at ρ ≥ 0.5 (beyond seed noise); v/u at ρ = 0 is far larger in
+  magnitude than at ρ ≥ 0.5.
+- The ρ = 0.5 vs 1 difference in signed w (0.5–0.7, ρ = 0.5 more negative) is undecided; no prediction.
+
+**Outcome (2026-11-27; ρ = 0.125 and 0.25 seed 0, ρ = 0 and 1 seed 1).** Val, best-val-u checkpoint:
+signed v = −87.0 ± 2.4 / −2.6 / −2.6 / −1.2 ± 0.9 / −2.0 ± 0.2 and signed w = −0.65 ± 0.62 / −4.25 / −4.26 /
+−4.16 ± 0.34 / −3.51 ± 0.07 at ρ = 0 / 0.125 / 0.25 / 0.5 / 1. **P1 supported**, sharper than predicted (v at the floor
+already at ρ = 0.125). **P2 supported** (w a plateau of about −4.2 for ρ ∈ [0.125, 0.5]). **P3 holds on seed 1** at
+ρ = 0 and 1. ρ = 0.5 vs 1 in w: about 3 SD (Welch t ≈ 3.2, 3 vs 2 seeds), same sign on val, test and SciQ; still
+exploratory. Dynamics: at ρ = 0.125, val v reached −16.6 at step 100 and came back to −2.5 by step 150. The drift
+starts and is then corrected. The effective gradient share of the crossed pairs rises above its nominal ρ (ρ = 0.125:
+12.5 % → about 20 % at step 100–200, from σ(−β·gap) on val), so the correction grows as v drifts.
+
+**Predictions for ρ = 0.02 and 0.05 (recorded 2026-11-27, before those runs).** The shape of v(ρ) between 0 and 0.125
+is unknown. Fitting v ≈ −2.5 − 85/(1 + kρ) to the points above gives only k ≳ 300.
+- **P4 (hyperbolic):** val v at the best checkpoint ≈ −14 at ρ = 0.02 and ≈ −7 at ρ = 0.05; intermediate values, not
+  ≈ −87 or ≈ −2.5.
+- **P4-alt (threshold):** each run ends either near −87 (runaway) or near −2.5 (corrected), with nothing in between.
+- **P5:** at both ρ, val v makes a larger step-100 excursion than at ρ = 0.125 (−16.6) before any correction.
+  w at the end is closer to 0 than −4.2 if v is not corrected.
+
 ---
 
 ## 4. Data sources
@@ -859,7 +890,7 @@ Every run writes a config + metrics JSON including: git commit, data MANIFEST ha
 | Checkpoint selection | **Decided 2026-11-24:** best validation u per run (primary); matched validation u (controlled) | — | Primary: for each run, the checkpoint with the highest validation u (each condition at its best fact learning). Also reported: the matched-u checkpoint (§10.3: first checkpoint reaching a common validation-u target), which rules out "lower bias because less was learned". Both come from saved checkpoints at no extra cost. Test data is never used for selection. |
 | Evaluation schedule | **Decided 2026-11-25** | — | Validation at every evaluation step (31 per run); test + SciQ at step 0, every 200 steps, the last step, and the best-val-u checkpoint (scored from its saved adapter at the end). Matched-u checkpoints are scored later with `score_checkpoint.py`. Saves ≈ 1 h per 4B run; results unchanged. |
 | Token-length balance (V8 in policy tokens) | **Decided 2026-11-25:** keep the data as is | — | Qwen3 tokens: warm responses +0.4 tokens on HaluEval (≈1.5%), +1.0 on SciQ (≈5%); ~75% of rows within the V8 tolerance (100% in words). Controlled in the analysis: per-token metrics + length diagnostics (§10.5). |
-| ρ grid | **Decided 2026-11-23:** {0, 0.25, 0.5, 0.75, 1} | {0, 0.5, 1} | Order: pilot ρ ∈ {0, 0.5, 1} with 1 seed (M7) → same 3 ρ with 3 seeds → ρ ∈ {0.25, 0.75} with 3 seeds (15 runs). Extra points (e.g. 0.1, 0.9) only where a curve bends, chosen after the 5-point grid with the reason recorded. Rationale: 0/0.5/1 carry the main claims; 0.25/0.75 give the curve shape and trend test; seeds are worth more than extra ρ values, and every ρ costs the same compute. |
+| ρ grid | **Decided 2026-11-23:** {0, 0.25, 0.5, 0.75, 1} | {0, 0.5, 1} | Order: pilot ρ ∈ {0, 0.5, 1} with 1 seed (M7) → same 3 ρ with 3 seeds → ρ ∈ {0.25, 0.75} with 3 seeds (15 runs). Extra points (e.g. 0.1, 0.9) only where a curve bends, chosen after the 5-point grid with the reason recorded. Rationale: 0/0.5/1 carry the main claims; 0.25/0.75 give the curve shape and trend test; seeds are worth more than extra ρ values, and every ρ costs the same compute. **Added 2026-11-26 (Qwen3-4B): ρ = 0.125.** Reason: with ρ ∈ {0, 0.5, 1} done, both v and w change almost entirely between 0 and 0.5 and are nearly flat from 0.5 to 1, so the curve bends below 0.5 and three points cannot tell a step, a fast saturating decay and a gradual drop apart. Order: ρ = 0.125 and 0.25 next (seed 0); 0.75 later (0.5 → 1 is flat). Predictions recorded in §3 before these runs. |
 | Seeds | **Decided 2026-11-23:** 3 per ρ | 1 | Same 3 seeds (LoRA init + data order) for every ρ (paired design). Rule fixed in advance: after the pilot, run 2–3 extra seeds at ρ = 0.5; if the seed SD of \|v\| or \|w\| exceeds ~⅓ of the matched-vs-crossed difference, use 5 seeds for ρ ∈ {0, 0.5, 1} (0.25/0.75 stay at 3). Baselines: ties ×3, KTO ×3, SFT ×3, positive control ×1. Split across the 3 teammates **by seed, not by ρ**: each teammate runs every ρ for one seed, so any machine/environment difference shows up as seed variance instead of being confounded with ρ. Everyone runs the same git commit, environment file and data MANIFEST hash (logged per run). |
 | Baselines included | **Decided 2026-11-24:** positive control, matched + ties, KTO (last); SFT dropped | ties, KTO, SFT, positive control | Priority order: positive control (needed: validates the v metric, T5) → matched + ties × 3 (main competitor) → KTO × 3 last (answers "why not an unpaired method?"). SFT dropped: it never sees incorrect answers, so it says little about pairing. Also evaluate each untrained base model once: generation metrics ("before" point) and u/v/w on log π_ref (pre-existing tone preference; `src/train/reference.py`). |
 | Warmth-rate measurement for generations | TBD | LLM judge | |

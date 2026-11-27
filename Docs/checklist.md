@@ -113,7 +113,12 @@ on a 2-A100 node (a node is shut down 20 min after either GPU goes idle):
 
 - [ ] ρ = 0 and ρ = 1 together:
       `bash scripts/hpc/submit_pair.sh 06:00:00 4b-s<seed>-r0r1 python train.py --model qwen3-4b --rho 0 --seed <seed> :: python train.py --model qwen3-4b --rho 1 --seed <seed>`
-- [ ] ρ = 0.25 and ρ = 0.75 together (same command with 0.25 / 0.75)
+- [x] ρ = 0.125 and ρ = 0.25 together, seed 0 (ρ = 0.125 added 2026-11-26: the curves bend below 0.5; predictions in plan §3).
+  Done 2026-11-27: v and w already at their ρ ≥ 0.5 values (P1, P2 supported; outcome in plan §3).
+- [ ] ρ = 0.02 and ρ = 0.05 together, seed 0 (added 2026-11-27: the transition is below 0.125; predictions P4, P5 in
+  plan §3). Exploratory shape probe, not part of the 3-seed grid unless the shape matters for the paper.
+- [ ] ρ = 0.125 and ρ = 0.25, seeds 1 and 2
+- [ ] ρ = 0.75 (later; 0.5 → 1 is flat)
 - [ ] ρ = 0.5 (seed 0: already done by the LR sweep). Seeds 1, 2: alone with `submit.sh`, or paired with that
       seed's ties baseline (A5), which takes about as long:
       `bash scripts/hpc/submit.sh a100 06:00:00 4b-s<seed>-r0.5 python train.py --model qwen3-4b --rho 0.5 --seed <seed>`
@@ -151,7 +156,16 @@ cross-family plots. Downloads: `bash scripts/hpc/download_models.sh qwen3-8b olm
 
 ## Phase C: extras
 
-- [ ] β robustness: 4B, ρ ∈ {0, 1}, β ∈ {0.05, 0.5}, one seed (`--set objective.beta=0.05`)
+- [ ] β robustness: 4B, ρ ∈ {0, 1}, β ∈ {0.05, 0.5}, seed 0 (`--set objective.beta=0.05`). **Moved earlier
+      (2026-11-26), run alongside A4:** at β = 0.1 (step 600) |w| was flat across ρ (~4.5–5, mostly per-quartet
+      noise floor) and signed w differed only slightly (ρ = 0 ≈ −1.3, ρ = 1 ≈ −2.4); likely causes: little
+      spillover into w with the passage in the prompt, and the loss saturating (βu ≈ 9) so the correction acts only
+      in the first ~200 steps. The β runs test whether w appears when the model moves further (0.05) or less (0.5),
+      and whether the v result (ρ = 0 |v| ≈ 76 vs ≈ 13) holds across β. **β = 0.05 first (2026-11-26); β = 0.5
+      later, depending on the result.** — 2026-11-26 β = 0.05 done: ρ = 0 v = −158 (vs −89 at β = 0.1; drift scales
+      with u, 183 vs 117); ρ = 1 v = −3.6. Signed w at matched val u ≈ 100: ρ = 0 −0.6, ρ = 1 −4.5 (same pattern as
+      β = 0.1); |w| still flat. One pair per β:
+      `submit_pair.sh 06:00:00 4b-b<β>-s0 python train.py --model qwen3-4b --rho 0 --seed 0 --set objective.beta=<β> :: python train.py --model qwen3-4b --rho 1 --seed 0 --set objective.beta=<β>`
 - [ ] Phase 2: Persona vectors (monitoring and steering) on matched / mixed / crossed adapters
 - [ ] Optional: 5 seeds on the core ρ values if results are noisy
 
