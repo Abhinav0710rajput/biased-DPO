@@ -115,9 +115,14 @@ on a 2-A100 node (a node is shut down 20 min after either GPU goes idle):
       `bash scripts/hpc/submit_pair.sh 06:00:00 4b-s<seed>-r0r1 python train.py --model qwen3-4b --rho 0 --seed <seed> :: python train.py --model qwen3-4b --rho 1 --seed <seed>`
 - [x] ρ = 0.125 and ρ = 0.25 together, seed 0 (ρ = 0.125 added 2026-11-26: the curves bend below 0.5; predictions in plan §3).
   Done 2026-11-27: v and w already at their ρ ≥ 0.5 values (P1, P2 supported; outcome in plan §3).
-- [ ] ρ = 0.02 and ρ = 0.05 together, seed 0 (added 2026-11-27: the transition is below 0.125; predictions P4, P5 in
+- [x] ρ = 0 and ρ = 1, seeds 0, 1, 2. Done 2026-11-27 (P3 holds on all three; outcome in plan §3).
+- [x] ρ = 0.02 and ρ = 0.05 together, seed 0 (added 2026-11-27: the transition is below 0.125; predictions P4, P5 in
   plan §3). Exploratory shape probe, not part of the 3-seed grid unless the shape matters for the paper.
-- [ ] ρ = 0.125 and ρ = 0.25, seeds 1 and 2
+  Done 2026-11-27: v already at the floor (P4 not supported), but w is graded (−2.3, −3.0). Seeds 1–2 are needed if
+  the w shape goes in the paper.
+  Seeds 1–2 done 2026-11-28: w −2.32 ± 0.10 (0.02), −3.09 ± 0.06 (0.05); replicates.
+- [x] ρ = 0.125 and ρ = 0.25, seed 1 (done 2026-11-27)
+- [ ] ρ = 0.125 and ρ = 0.25, seed 2
 - [ ] ρ = 0.75 (later; 0.5 → 1 is flat)
 - [ ] ρ = 0.5 (seed 0: already done by the LR sweep). Seeds 1, 2: alone with `submit.sh`, or paired with that
       seed's ties baseline (A5), which takes about as long:
@@ -166,9 +171,10 @@ cross-family plots. Downloads: `bash scripts/hpc/download_models.sh qwen3-8b olm
       with u, 183 vs 117); ρ = 1 v = −3.6. Signed w at matched val u ≈ 100: ρ = 0 −0.6, ρ = 1 −4.5 (same pattern as
       β = 0.1); |w| still flat. One pair per β:
       `submit_pair.sh 06:00:00 4b-b<β>-s0 python train.py --model qwen3-4b --rho 0 --seed 0 --set objective.beta=<β> :: python train.py --model qwen3-4b --rho 1 --seed 0 --set objective.beta=<β>`
-- [ ] β = 0.2, ρ ∈ {0, 0.25, 0.5, 1}, seed 0 (added 2026-11-27; predictions P7, P8 in plan §3): tests whether the
+- [x] β = 0.2, ρ ∈ {0, 0.25, 0.5, 1}, seed 0 (added 2026-11-27; predictions P7, P8 in plan §3): tests whether the
       matched pairs' pull on w is too weak at β = 0.1 to hold w at 0 once crossed pairs are present. Two pairs:
-      ρ 0 + 1 (`4b-b0.2-r0r1`), ρ 0.25 + 0.5 (`4b-b0.2-r025r05`).
+      ρ 0 + 1 (`4b-b0.2-r0r1`), ρ 0.25 + 0.5 (`4b-b0.2-r025r05`). Done 2026-11-27: P7 and P7-alt not supported
+      (w/u about −3 % at every ρ > 0, flat); P8 half supported. Outcome in plan §3.
 - [ ] Phase 2: Persona vectors (monitoring and steering) on matched / mixed / crossed adapters
 - [ ] Optional: 5 seeds on the core ρ values if results are noisy
 

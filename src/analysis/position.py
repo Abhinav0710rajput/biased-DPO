@@ -4,8 +4,8 @@
   python src/analysis/position.py --model qwen3-4b
   python src/analysis/position.py --model qwen3-4b --beta 0.05
 
-Uses token_r.npz, which training saves for the FINAL step only (not the best-val-u checkpoint; in the β = 0.1
-4B runs these are 0–225 steps apart). prefix + answer + suffix = the full-response value.
+Uses token_r.npz at each run's best-val-u step (collect.py keeps the best and final steps), the same checkpoint as
+vw_by_rho.py and fact_gaps.py. prefix + answer + suffix = the full-response value.
 Writes results/<model>/figures/position_vw_beta<β>.png and position_vw_beta<β>.json.
 """
 
@@ -18,7 +18,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vw_by_rho import COLORS, GRID, INK, MARKERS, MUTED, ROOT, SPLITS
+from vw_by_rho import COLORS, GRID, INK, MARKERS, MUTED, ROOT, SPLITS, rho_axis
 
 PARTS = {"prefix": "prefix (before the answer)", "answer": "answer tokens", "suffix": "suffix (punctuation + end token)"}
 ROWS = {**PARTS, "full": "full response (sum of rows above)"}
@@ -50,7 +50,7 @@ def main():
     runs = {}
     for d in sorted((ROOT / "results" / args.model / "runs").iterdir()):
         m = pat.match(d.name)
-        if m and (d / "token_r.npz").exists():
+        if m and (d / "token_r.npz").exists() and (d / "summary.json").exists():
             runs.setdefault(float(m.group(1)), []).append(d)
     if not runs:
         raise SystemExit("no finished runs with token_r.npz found")
@@ -63,10 +63,11 @@ def main():
         per_seed = []
         for d in runs[rho]:
             t = np.load(d / "token_r.npz")
+            best = json.load(open(d / "summary.json"))["best_val_u_step"]
+            step_used[d.name] = best
             out = {}
             for sp in SPLITS:
-                key = next(k for k in t.files if k.startswith(f"{sp}_step"))
-                step_used[d.name] = int(key.split("_step")[1])
+                key = f"{sp}_step{best}"
                 off = t[f"{sp}_offsets"]
                 part = token_parts(t[f"{sp}_span"], off)
                 r = t[key].astype(np.float64)
@@ -97,10 +98,7 @@ def main():
                 ax.text(0.5, 0.75, "≈ 0 by construction (same text in correct and incorrect)", transform=ax.transAxes,
                         ha="center", color=MUTED, fontsize=9)
             ax.set_title(f"{klabel} — {plabel}", color=INK, fontsize=11, loc="left")
-            ax.set_xticks(rhos)
-            ax.set_xticklabels([f"{r:g}" for r in rhos])
-            if row == len(ROWS) - 1:
-                ax.set_xlabel("ρ  (share of crossed pairs)", color=INK)
+            rho_axis(ax, rhos, label=row == len(ROWS) - 1)
             if col == 0:
                 ax.set_ylabel("nats (change from the untrained model)", color=MUTED, fontsize=9)
             ax.grid(axis="y", color=GRID, linewidth=0.8, zorder=0)
@@ -113,7 +111,7 @@ def main():
     seeds_txt = ", ".join(f"ρ {r:g}: {len(runs[r])}" for r in rhos)
     fig.suptitle("Where v and w live in the response, by ρ", x=0.01, ha="left", color=INK, fontsize=14)
     fig.text(0.01, 0.005,
-             f"{args.model}, β = {args.beta}, LR {args.lr}; final training step (per-token values are saved only there). "
+             f"{args.model}, β = {args.beta}, LR {args.lr}; best-validation-u checkpoint of each run. "
              f"Each panel has its own y-axis.\nprefix + answer + suffix = full-response value. Seeds per ρ — {seeds_txt}. "
              f"Points = mean over seeds; bars = ±1 SD (only where ≥ 2 seeds).",
              color=MUTED, fontsize=8.5, ha="left", va="bottom")

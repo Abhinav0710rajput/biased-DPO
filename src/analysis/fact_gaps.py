@@ -19,7 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from vw_by_rho import GRID, INK, MUTED, ROOT, SPLITS
+from vw_by_rho import GRID, INK, MUTED, ROOT, SPLITS, rho_axis
 
 TONES = {"warm": ("CW − IW  (warm)", "#eb6834", "o"), "neutral": ("CN − IN  (neutral)", "#2a78d6", "s")}
 
@@ -44,9 +44,10 @@ def mean_sd(xs):
     return float(x.mean()), (float(x.std(ddof=1)) if len(x) > 1 else 0.0)
 
 
-def style(ax, title, xlabel):
+def style(ax, title, xlabel=None):
     ax.set_title(title, color=INK, fontsize=11, loc="left")
-    ax.set_xlabel(xlabel, color=INK)
+    if xlabel:
+        ax.set_xlabel(xlabel, color=INK)
     ax.set_ylim(bottom=0)
     ax.grid(axis="y", color=GRID, linewidth=0.8, zorder=0)
     for s in ("top", "right"):
@@ -89,9 +90,8 @@ def main():
             e = [per[f"{r:g}"][t][1] for r in rhos]
             ax.errorbar(rhos, y, yerr=e, color=color, marker=marker, markersize=6, linewidth=2, capsize=3,
                         elinewidth=1.2, label=label, zorder=3)
-        ax.set_xticks(rhos)
-        ax.set_xticklabels([f"{r:g}" for r in rhos])
-        style(ax, name, "ρ  (share of crossed pairs)")
+        style(ax, name)
+        rho_axis(ax, rhos)
     axes[0].set_ylabel("fact gap, nats (change from the untrained model)", color=MUTED, fontsize=9)
     axes[0].legend(frameon=False, fontsize=9, loc="lower right")
     fig.suptitle("Fact gap in each tone by ρ  (warm − neutral gap = 2w)", x=0.01, ha="left", color=INK, fontsize=13)
@@ -103,8 +103,14 @@ def main():
     plt.close(fig)
 
     # ---- over training, validation
-    fig, axes = plt.subplots(1, len(rhos), figsize=(3.1 * len(rhos), 4.0), facecolor="white", sharey=True)
-    for ax, rho in zip(np.atleast_1d(axes), rhos):
+    ncol = min(len(rhos), 4)
+    nrow = -(-len(rhos) // ncol)
+    fig, axes = plt.subplots(nrow, ncol, figsize=(3.3 * ncol, 3.6 * nrow + 0.6), facecolor="white", sharey=True,
+                             squeeze=False)
+    axes = axes.ravel()
+    for ax in axes[len(rhos):]:
+        ax.set_visible(False)
+    for ax, rho in zip(axes, rhos):
         zs = [np.load(d / "quartet_scores.npz") for d in runs[rho]]
         steps = sorted(set.intersection(*(set(int(s) for s in z["val_steps"]) for z in zs)))
         curve = {t: [] for t in TONES}
@@ -120,14 +126,15 @@ def main():
             if len(zs) > 1:
                 ax.fill_between(steps, m - sd, m + sd, color=color, alpha=0.15, linewidth=0, zorder=2)
         style(ax, f"ρ = {rho:g}  ({len(zs)} seed{'s' if len(zs) > 1 else ''})", "training step")
-    np.atleast_1d(axes)[0].set_ylabel("fact gap on validation, nats", color=MUTED, fontsize=9)
-    np.atleast_1d(axes)[0].legend(frameon=False, fontsize=9, loc="lower right")
+    for ax in axes[::ncol]:
+        ax.set_ylabel("fact gap on validation, nats", color=MUTED, fontsize=9)
+    axes[0].legend(frameon=False, fontsize=9, loc="lower right")
     fig.suptitle("Fact gap in each tone over training  (HaluEval validation)", x=0.01, ha="left", color=INK,
                  fontsize=13)
     fig.text(0.01, 0.005, f"{args.model}, β = {args.beta}, LR {args.lr}. Lines = mean over seeds; bands = ±1 SD "
              f"(only where ≥ 2 seeds). The vertical distance between the lines is 2|w|.",
              color=MUTED, fontsize=8.5, ha="left", va="bottom")
-    fig.tight_layout(rect=(0, 0.05, 1, 0.93))
+    fig.tight_layout(rect=(0, 0.05 / nrow, 1, 1 - 0.07 / nrow))
     fig.savefig(out / f"fact_gaps_curves_{tag}.png", dpi=200)
     plt.close(fig)
 

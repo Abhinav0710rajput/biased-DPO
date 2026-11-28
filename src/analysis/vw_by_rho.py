@@ -17,6 +17,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,6 +25,17 @@ SPLITS = {"val": "HaluEval val", "test": "HaluEval test", "ood_sciq": "SciQ (out
 COLORS = {"val": "#2a78d6", "test": "#eb6834", "ood_sciq": "#1baf7a"}     # categorical slots 1–3, fixed order
 MARKERS = {"val": "o", "test": "s", "ood_sciq": "^"}
 INK, MUTED, GRID = "#1f1f1e", "#6b6b66", "#e6e5e0"
+
+
+def rho_axis(ax, rhos, label=True):
+    """ρ on a symmetric-log axis (linear near 0), so 0, 0.02, 0.05 and 0.125 don't pile up at the left edge."""
+    ax.set_xscale("symlog", linthresh=0.02, linscale=0.35)
+    ax.set_xlim(-0.004, max(rhos) * 1.15)
+    ax.set_xticks(rhos)
+    ax.set_xticklabels([f"{r:g}" for r in rhos])
+    ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+    if label:
+        ax.set_xlabel("ρ  (share of crossed pairs; log scale above 0.02)", color=INK)
 
 
 def contrasts(r):
@@ -76,11 +88,8 @@ def panel(ax, summ, key, label, zero_line):
     else:                                   # magnitudes: start at 0 so small wobbles don't look like trends
         ax.set_ylim(bottom=0)
     ax.set_title(label, color=INK, fontsize=12, loc="left")
-    ax.set_xlabel("ρ  (share of crossed pairs)", color=INK)
     ax.set_ylabel("nats (change from the untrained model)", color=MUTED, fontsize=9)
-    rhos = sorted({r for sp in summ for r in summ[sp]})
-    ax.set_xticks(rhos)
-    ax.set_xticklabels([f"{r:g}" for r in rhos])
+    rho_axis(ax, sorted({r for sp in summ for r in summ[sp]}))
     ax.grid(axis="y", color=GRID, linewidth=0.8, zorder=0)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)

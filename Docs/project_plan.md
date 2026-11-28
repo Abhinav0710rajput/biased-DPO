@@ -252,6 +252,42 @@ and also raw values at matched val u ≈ 100. β = 0.1 reference: w/u = −0.2 /
 - **P8 (v):** at ρ = 0, v/u is smaller in magnitude than at β = 0.1 (the trend from β 0.05 → 0.1 was −87 % → −74 %);
   at ρ ≥ 0.25, |v/u| < 5 %.
 
+**Outcome (2026-11-27; ρ = 0.02, 0.05 seed 0; ρ = 0.125, 0.25 seed 1; ρ = 0, 1 seed 2; β = 0.2 seed 0).** Val,
+best-val-u checkpoint, full response.
+- **3 seeds at ρ = 0 and 1 (P3):** ρ = 0 v = −89.1 ± 4.0, w = −0.80 ± 0.51; ρ = 1 v = −2.1 ± 0.25,
+  w = −3.62 ± 0.20. P3 holds on all three seeds. ρ = 0.5 vs 1 in w: −4.16 ± 0.34 vs −3.62 ± 0.20, Welch t ≈ 2.4
+  (3 vs 3 seeds; was 3.2 with 2 seeds at ρ = 1). Weaker; still undecided.
+- **P4 not supported; P4-alt only in its "corrected" branch.** v = −1.6 (ρ = 0.02) and −1.4 (ρ = 0.05), the same
+  floor as ρ ≥ 0.125. No intermediate values, no runaway: at the end of training, v(ρ) is a step between ρ = 0 and
+  0.02. The hyperbolic fit (k ≈ 300) is wrong.
+- **P5 supported.** The step-100 excursion of val v is graded: −64 (ρ 0) / −55 (0.02) / −42 (0.05) / −17 (0.125) /
+  −10 (0.25, step 75). It is then corrected, to about −8 by step 300 at ρ = 0.02. The effective crossed gradient
+  share stays small (ρ = 0.02: 2 % → 7.4 % at step 100 → 3.3 % at the end). So the correction does not need a large
+  crossed share. Reading (exploratory): matched pairs move v only by spillover (prefix gradient is zero under matched
+  pairs), while crossed pairs push v directly, so even 2 % direct pull outweighs the spillover. The second part of
+  P5 ("w closer to 0 if v is not corrected") is moot because v was corrected. Yet w is closer to 0 anyway (next point).
+- **New (exploratory, 1 seed at 0.02 and 0.05): w is graded where v is not.** w = −0.80 / −2.25 / −3.01 / −4.04 /
+  −4.23 / −4.16 / −3.62 at ρ = 0 / 0.02 / 0.05 / 0.125 / 0.25 / 0.5 / 1. The same order holds on test and SciQ.
+  w at ρ = 0.02 and 0.05 is flat over the last 500 steps, so it is not a training-length effect. v saturates below
+  ρ = 0.02; w needs ρ ≈ 0.1. They are two different sensitivities to the crossed share. The answer-only w (P6
+  candidate) falls monotonically over the whole range: 3.8 / 3.1 / 2.7 / 2.6 / 2.5 / 2.3 / 2.1.
+- **P7 not supported; P7-alt not supported.** β = 0.2 w/u = −0.2 % / −3.0 % / −2.8 % / −3.1 % at ρ = 0 / 0.25 /
+  0.5 / 1. β = 0.1 (seed means) is −0.7 % / −3.7 % / −3.8 % / −3.4 %. The ρ > 0 values are flat within about 0.3 pp,
+  which is about β = 0.1 seed noise. So there is no reversal (P7), and w/u is slightly less negative, not more
+  (P7-alt). The comparison at matched u is not usable: β = 0.2 tops out at u ≈ 75. β = 0.1 reaches that at step 300,
+  before w has developed (w forms mostly after step 500), so matched u confounds training time.
+  w/u at ρ = 1 is −0.5 % / −3.4 % / −3.1 % for β = 0.05 / 0.1 / 0.2: β = 0.05 (one seed) is the outlier.
+- **P8:** part 1 not supported. ρ = 0 v/u = −79 % at β = 0.2 vs −76 ± 3.5 % at β = 0.1 (3 seeds), within seed
+  spread; the β 0.05 → 0.1 trend does not continue. Part 2 supported: |v/u| = 1.9 / 1.9 / 2.6 % at ρ = 0.25 / 0.5 / 1.
+- β = 0.2 dynamics: w overshoots early (ρ = 1: −6.4 at step 200, ρ = 0.25: −5.1 at step 150) and relaxes to −2.1.
+- **Seeds 1–2 at ρ = 0.02 and 0.05 (2026-11-28) replicate the low-ρ results.** w = −2.32 ± 0.10 (0.02) and
+  −3.09 ± 0.06 (0.05), 3 seeds each, between ρ = 0 (−0.80) and 0.125 (−4.04); the same order on test and SciQ.
+  v = −2.9 ± 1.4 and −2.2 ± 0.9 (at the floor). Step-100 v excursion: −52 to −55 (0.02), −38 to −42 (0.05) on every
+  seed. Answer-only w falls strictly with ρ on all three splits, seed SD ≤ 0.12:
+  val 3.83 / 2.99 / 2.75 / 2.56 / 2.48 / 2.29 / 2.07. These were looked at without a recorded prediction, so they
+  are replications of an exploratory pattern, not a confirmatory test. On SciQ (OOD), v at ρ = 0.02 is −11 (all
+  three seeds): out of domain, the correction is incomplete at the lowest ρ.
+
 ---
 
 ## 4. Data sources
